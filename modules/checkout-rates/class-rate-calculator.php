@@ -17,8 +17,16 @@ final class RateCalculator {
     $labels = (array) ( $config['labels'] ?? [] );
     $rates  = [];
     foreach ( $costs as $c ) {
+      if ( ! is_array( $c ) ) {
+        continue;
+      }
       $cid = (int) ( $c['courier_id'] ?? 0 );
       if ( $cid <= 0 ) {
+        continue;
+      }
+      // A row without a numeric cost must NOT become a free (0) rate — skip it.
+      // If every row is invalid, the empty result triggers the caller's fallback.
+      if ( ! isset( $c['cost'] ) || ! is_numeric( $c['cost'] ) ) {
         continue;
       }
       if ( ! empty( $allow ) && ! in_array( $cid, $allow, true ) ) {

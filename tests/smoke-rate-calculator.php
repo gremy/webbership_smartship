@@ -42,6 +42,18 @@ assert_true( abs( RateCalculator::apply_markup( 10.0, [ 'markup_type' => 'percen
 $r = RateCalculator::build_rates( [ [ 'courier_name' => 'x', 'cost' => 1 ], [ 'courier_id' => 2, 'courier_name' => 'SameDay', 'cost' => 9 ] ], [] );
 assert_same( 1, count( $r ), 'skip id-less courier' );
 
+// a row with a missing or non-numeric cost is SKIPPED (must not become a free 0-cost rate).
+$r = RateCalculator::build_rates( [
+  [ 'courier_id' => 1, 'courier_name' => 'no cost' ],
+  [ 'courier_id' => 2, 'courier_name' => 'bad cost', 'cost' => 'abc' ],
+  [ 'courier_id' => 16, 'courier_name' => 'ok', 'cost' => 9.5 ],
+], [] );
+assert_same( 1, count( $r ), 'skip rows without a numeric cost' );
+assert_same( 16, $r[0]['courier_id'], 'only the valid-cost row survives' );
+// a non-array row is skipped.
+$r = RateCalculator::build_rates( [ 'garbage', [ 'courier_id' => 1, 'courier_name' => 'ok', 'cost' => 5 ] ], [] );
+assert_same( 1, count( $r ), 'skip non-array row' );
+
 // fallback rate.
 $f = RateCalculator::fallback_rate( [ 'fallback_amount' => 19.99, 'fallback_title' => 'Curier standard' ] );
 assert_same( 'ovride_smartship:fallback', $f['id'], 'fallback id' );
