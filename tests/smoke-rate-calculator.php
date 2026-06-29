@@ -7,7 +7,7 @@ function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new Runti
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
 
 require_once __DIR__ . '/../modules/checkout-rates/class-rate-calculator.php';
-use Ovride\Smartship\Modules\CheckoutRates\RateCalculator;
+use Webbership\Smartship\Modules\CheckoutRates\RateCalculator;
 
 $costs = [
   [ 'courier_id' => 16, 'courier_name' => 'SmartShip Delivery', 'cost' => 17.97 ],
@@ -18,7 +18,7 @@ $costs = [
 // no allowlist, no markup -> all rates, raw cost, id + courier_id set.
 $r = RateCalculator::build_rates( $costs, [] );
 assert_same( 3, count( $r ), 'all couriers' );
-assert_same( 'ovride_smartship:16', $r[0]['id'], 'rate id format' );
+assert_same( 'webbership_smartship:16', $r[0]['id'], 'rate id format' );
 assert_same( 16, $r[0]['courier_id'], 'courier_id carried' );
 assert_true( abs( $r[0]['cost'] - 17.97 ) < 0.001, 'raw cost' );
 assert_same( 'SmartShip Delivery', $r[0]['label'], 'default label = courier_name' );
@@ -56,7 +56,7 @@ assert_same( 1, count( $r ), 'skip non-array row' );
 
 // fallback rate.
 $f = RateCalculator::fallback_rate( [ 'fallback_amount' => 19.99, 'fallback_title' => 'Curier standard' ] );
-assert_same( 'ovride_smartship:fallback', $f['id'], 'fallback id' );
+assert_same( 'webbership_smartship:fallback', $f['id'], 'fallback id' );
 assert_same( 'Curier standard', $f['label'], 'fallback label' );
 assert_true( abs( $f['cost'] - 19.99 ) < 0.001, 'fallback cost' );
 

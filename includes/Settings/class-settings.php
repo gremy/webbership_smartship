@@ -1,26 +1,26 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Settings;
+namespace Webbership\Smartship\Settings;
 
-use Ovride\Smartship\Api\SmartShipClient;
+use Webbership\Smartship\Api\SmartShipClient;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Plugin settings page + accessors (WP Settings API).
  *
- * @package Ovride\Smartship\Settings
+ * @package Webbership\Smartship\Settings
  */
 final class Settings {
-  public const OPTION       = 'ovride_smartship_settings';
-  public const GROUP        = 'ovride_smartship_settings_group';
-  public const PAGE         = 'ovride-smartship';
+  public const OPTION       = 'webbership_smartship_settings';
+  public const GROUP        = 'webbership_smartship_settings_group';
+  public const PAGE         = 'webbership-smartship';
   public const CAPABILITY   = 'manage_woocommerce';
-  public const KEY_CONSTANT = 'OVRIDE_SMARTSHIP_API_KEY';
+  public const KEY_CONSTANT = 'WEBBERSHIP_SMARTSHIP_API_KEY';
 
-  public const ACTION_TEST       = 'ovride_smartship_test_connection';
-  public const LAST_ERROR_OPTION = 'ovride_smartship_last_error';
+  public const ACTION_TEST       = 'webbership_smartship_test_connection';
+  public const LAST_ERROR_OPTION = 'webbership_smartship_last_error';
 
   public function register_hooks(): void {
     add_action( 'admin_menu', [ $this, 'add_menu' ] );
@@ -30,7 +30,7 @@ final class Settings {
 
   public function handle_test_connection(): void {
     if ( ! current_user_can( self::CAPABILITY ) ) {
-      wp_die( esc_html__( 'You do not have permission to do this.', 'ovride-smartship' ) );
+      wp_die( esc_html__( 'You do not have permission to do this.', 'webbership-smartship' ) );
     }
     check_admin_referer( self::ACTION_TEST );
 
@@ -39,7 +39,7 @@ final class Settings {
     update_option( self::LAST_ERROR_OPTION, $success ? '' : (string) $result['message'], false );
 
     wp_safe_redirect( add_query_arg(
-      [ 'page' => self::PAGE, 'ovride_ss_test' => $success ? 'ok' : 'fail' ],
+      [ 'page' => self::PAGE, 'webbership_ss_test' => $success ? 'ok' : 'fail' ],
       admin_url( 'admin.php' )
     ) );
     exit;
@@ -80,8 +80,8 @@ final class Settings {
   public function add_menu(): void {
     add_submenu_page(
       'woocommerce',
-      __( 'SmartShip', 'ovride-smartship' ),
-      __( 'SmartShip', 'ovride-smartship' ),
+      __( 'SmartShip', 'webbership-smartship' ),
+      __( 'SmartShip', 'webbership-smartship' ),
       self::CAPABILITY,
       self::PAGE,
       [ $this, 'render_page' ]
@@ -115,7 +115,7 @@ final class Settings {
     // stored one and flag it — never persist garbage that /awb/new would reject.
     $iban = isset( $input['iban'] ) ? strtoupper( preg_replace( '/\s+/', '', sanitize_text_field( (string) $input['iban'] ) ) ) : (string) $current['iban'];
     if ( '' !== $iban && ! preg_match( '/^RO[0-9A-Z]{22}$/', $iban ) ) {
-      add_settings_error( self::OPTION, 'iban', __( 'IBAN looks invalid — expected RO + 22 characters.', 'ovride-smartship' ) );
+      add_settings_error( self::OPTION, 'iban', __( 'IBAN looks invalid — expected RO + 22 characters.', 'webbership-smartship' ) );
       $iban = (string) $current['iban'];
     }
     $out['iban'] = $iban;
@@ -125,22 +125,22 @@ final class Settings {
 
   public function render_page(): void {
     if ( ! current_user_can( self::CAPABILITY ) ) {
-      wp_die( esc_html__( 'You do not have permission to view this page.', 'ovride-smartship' ) );
+      wp_die( esc_html__( 'You do not have permission to view this page.', 'webbership-smartship' ) );
     }
     ?>
     <div class="wrap">
-      <h1><?php echo esc_html__( 'SmartShip', 'ovride-smartship' ); ?></h1>
+      <h1><?php echo esc_html__( 'SmartShip', 'webbership-smartship' ); ?></h1>
       <?php
-      if ( isset( $_GET['ovride_ss_test'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only status flag
-        $ok = 'ok' === sanitize_key( wp_unslash( $_GET['ovride_ss_test'] ) );
+      if ( isset( $_GET['webbership_ss_test'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only status flag
+        $ok = 'ok' === sanitize_key( wp_unslash( $_GET['webbership_ss_test'] ) );
         printf(
           '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
           $ok ? 'success' : 'error',
           $ok
-            ? esc_html__( 'SmartShip connection OK.', 'ovride-smartship' )
+            ? esc_html__( 'SmartShip connection OK.', 'webbership-smartship' )
             : esc_html( sprintf(
                 /* translators: %s: error message from SmartShip. */
-                __( 'SmartShip connection failed: %s', 'ovride-smartship' ),
+                __( 'SmartShip connection failed: %s', 'webbership-smartship' ),
                 (string) get_option( self::LAST_ERROR_OPTION, '' )
               ) )
         );
@@ -151,36 +151,36 @@ final class Settings {
         <table class="form-table" role="presentation">
           <tr>
             <th scope="row">
-              <label for="ovride_smartship_api_key"><?php echo esc_html__( 'API key', 'ovride-smartship' ); ?></label>
+              <label for="webbership_smartship_api_key"><?php echo esc_html__( 'API key', 'webbership-smartship' ); ?></label>
             </th>
             <td>
               <?php if ( self::key_is_constant() ) : ?>
                 <p class="description">
-                  <?php echo esc_html__( 'Defined in wp-config.php (OVRIDE_SMARTSHIP_API_KEY); the database value is ignored.', 'ovride-smartship' ); ?>
+                  <?php echo esc_html__( 'Defined in wp-config.php (WEBBERSHIP_SMARTSHIP_API_KEY); the database value is ignored.', 'webbership-smartship' ); ?>
                 </p>
               <?php else : ?>
                 <input
                   name="<?php echo esc_attr( self::OPTION ); ?>[api_key]"
-                  id="ovride_smartship_api_key"
+                  id="webbership_smartship_api_key"
                   type="password"
                   value=""
                   autocomplete="new-password"
                   class="regular-text" />
                 <p class="description">
-                  <?php echo esc_html__( 'The stored key is hidden. Leave blank to keep the current key.', 'ovride-smartship' ); ?>
+                  <?php echo esc_html__( 'The stored key is hidden. Leave blank to keep the current key.', 'webbership-smartship' ); ?>
                 </p>
               <?php endif; ?>
             </td>
           </tr>
           <tr>
-            <th scope="row"><label for="ovride_smartship_sender"><?php echo esc_html__( 'Default sender', 'ovride-smartship' ); ?></label></th>
+            <th scope="row"><label for="webbership_smartship_sender"><?php echo esc_html__( 'Default sender', 'webbership-smartship' ); ?></label></th>
             <td>
               <?php
               $current_sender = self::sender_id();
-              $senders        = self::api_key() !== '' ? ( new \Ovride\Smartship\Api\SmartShipClient( self::api_key() ) )->get_senders() : [ 'ok' => false ];
+              $senders        = self::api_key() !== '' ? ( new \Webbership\Smartship\Api\SmartShipClient( self::api_key() ) )->get_senders() : [ 'ok' => false ];
               if ( ! empty( $senders['ok'] ) && ! empty( $senders['senders'] ) ) :
                 ?>
-                <select name="<?php echo esc_attr( self::OPTION ); ?>[sender_id]" id="ovride_smartship_sender">
+                <select name="<?php echo esc_attr( self::OPTION ); ?>[sender_id]" id="webbership_smartship_sender">
                   <?php foreach ( (array) $senders['senders'] as $snd ) :
                     $sid = (int) ( $snd['id'] ?? 0 );
                     $lbl = trim( ( $snd['nume'] ?? '' ) . ' — ' . ( $snd['localitate'] ?? '' ), ' —' );
@@ -189,22 +189,22 @@ final class Settings {
                   <?php endforeach; ?>
                 </select>
               <?php else : ?>
-                <p class="description"><?php echo esc_html__( 'Save a valid API key first, then reload to choose a sender.', 'ovride-smartship' ); ?></p>
+                <p class="description"><?php echo esc_html__( 'Save a valid API key first, then reload to choose a sender.', 'webbership-smartship' ); ?></p>
               <?php endif; ?>
             </td>
           </tr>
           <tr>
-            <th scope="row"><label for="ovride_smartship_iban"><?php echo esc_html__( 'IBAN (for cash-on-delivery)', 'ovride-smartship' ); ?></label></th>
+            <th scope="row"><label for="webbership_smartship_iban"><?php echo esc_html__( 'IBAN (for cash-on-delivery)', 'webbership-smartship' ); ?></label></th>
             <td>
-              <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="ovride_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" />
+              <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="webbership_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" />
             </td>
           </tr>
           <tr>
-            <th scope="row"><?php echo esc_html__( 'Debug logging', 'ovride-smartship' ); ?></th>
+            <th scope="row"><?php echo esc_html__( 'Debug logging', 'webbership-smartship' ); ?></th>
             <td>
               <label>
                 <input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[debug]" value="yes" <?php checked( self::enabled( 'debug' ) ); ?> />
-                <?php echo esc_html__( 'Log SmartShip API calls to WooCommerce → Status → Logs.', 'ovride-smartship' ); ?>
+                <?php echo esc_html__( 'Log SmartShip API calls to WooCommerce → Status → Logs.', 'webbership-smartship' ); ?>
               </label>
             </td>
           </tr>
@@ -214,7 +214,7 @@ final class Settings {
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
       <input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_TEST ); ?>" />
       <?php wp_nonce_field( self::ACTION_TEST ); ?>
-      <?php submit_button( __( 'Test connection', 'ovride-smartship' ), 'secondary', 'submit', false ); ?>
+      <?php submit_button( __( 'Test connection', 'webbership-smartship' ), 'secondary', 'submit', false ); ?>
     </form>
     </div>
     <?php

@@ -5,18 +5,18 @@ declare(strict_types=1);
 
 define( 'ABSPATH', __DIR__ );
 
-$GLOBALS['ovride_ss_log'] = null; // last [ level, message, context ] recorded
+$GLOBALS['webbership_ss_log'] = null; // last [ level, message, context ] recorded
 
 function __( $text, $domain = 'default' ) { return $text; }
 function wp_parse_args( $args, $defaults = [] ) { return array_merge( $defaults, (array) $args ); }
-function get_option( $name, $default = false ) { return $GLOBALS['ovride_ss_options'][ $name ] ?? $default; }
+function get_option( $name, $default = false ) { return $GLOBALS['webbership_ss_options'][ $name ] ?? $default; }
 
-class Ovride_SS_Test_Logger {
+class Webbership_SS_Test_Logger {
   public function log( $level, $message, $context ) {
-    $GLOBALS['ovride_ss_log'] = [ 'level' => $level, 'message' => $message, 'context' => $context ];
+    $GLOBALS['webbership_ss_log'] = [ 'level' => $level, 'message' => $message, 'context' => $context ];
   }
 }
-function wc_get_logger() { return new Ovride_SS_Test_Logger(); }
+function wc_get_logger() { return new Webbership_SS_Test_Logger(); }
 
 function assert_true( bool $cond, string $msg ): void {
   if ( ! $cond ) { throw new RuntimeException( $msg ); }
@@ -30,11 +30,11 @@ function assert_same( $expected, $actual, string $msg ): void {
 require_once __DIR__ . '/../includes/Settings/class-settings.php';
 require_once __DIR__ . '/../includes/class-logger.php';
 
-use Ovride\Smartship\Logger;
-use Ovride\Smartship\Settings\Settings;
+use Webbership\Smartship\Logger;
+use Webbership\Smartship\Settings\Settings;
 
 // Seed the API key so Settings::api_key() returns SEKRET.
-$GLOBALS['ovride_ss_options'][ Settings::OPTION ] = [ 'api_key' => 'SEKRET', 'debug' => 'no' ];
+$GLOBALS['webbership_ss_options'][ Settings::OPTION ] = [ 'api_key' => 'SEKRET', 'debug' => 'no' ];
 assert_same( 'SEKRET', Settings::api_key(), 'sanity: Settings::api_key()' );
 
 // Log an error whose message AND context carry the key (nested too).
@@ -44,7 +44,7 @@ Logger::error( 'boom SEKRET', [
   'count'   => 7, // non-string scalar must survive untouched
 ] );
 
-$rec = $GLOBALS['ovride_ss_log'];
+$rec = $GLOBALS['webbership_ss_log'];
 assert_true( null !== $rec, 'a record was logged' );
 
 $blob = var_export( $rec['message'], true ) . var_export( $rec['context'], true );

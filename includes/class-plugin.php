@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship;
+namespace Webbership\Smartship;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Plugin bootstrap: singleton + module loader.
  *
- * @package Ovride\Smartship
+ * @package Webbership\Smartship
  */
 final class Plugin {
   private static ?self $instance = null;
@@ -32,13 +32,13 @@ final class Plugin {
       return; // Nothing else loads without WooCommerce.
     }
 
-    ( new \Ovride\Smartship\Settings\Settings() )->register_hooks();
+    ( new \Webbership\Smartship\Settings\Settings() )->register_hooks();
 
-    require_once OVRIDE_SMARTSHIP_DIR . 'modules/awb/class-awb-module.php';
-    $this->modules[] = new \Ovride\Smartship\Modules\Awb\AwbModule();
+    require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/awb/class-awb-module.php';
+    $this->modules[] = new \Webbership\Smartship\Modules\Awb\AwbModule();
 
-    require_once OVRIDE_SMARTSHIP_DIR . 'modules/checkout-rates/class-checkout-rates-module.php';
-    $this->modules[] = new \Ovride\Smartship\Modules\CheckoutRates\CheckoutRatesModule();
+    require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/checkout-rates/class-checkout-rates-module.php';
+    $this->modules[] = new \Webbership\Smartship\Modules\CheckoutRates\CheckoutRatesModule();
 
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
@@ -48,15 +48,15 @@ final class Plugin {
   }
 
   public static function activate(): void {
-    update_option( 'ovride_smartship_version', OVRIDE_SMARTSHIP_VERSION, false );
+    update_option( 'webbership_smartship_version', WEBBERSHIP_SMARTSHIP_VERSION, false );
   }
 
   public static function deactivate(): void {
     global $wpdb;
     $wpdb->query(
       "DELETE FROM {$wpdb->options}
-        WHERE option_name LIKE '\\_transient\\_ovride\\_smartship\\_%'
-           OR option_name LIKE '\\_transient\\_timeout\\_ovride\\_smartship\\_%'"
+        WHERE option_name LIKE '\\_transient\\_webbership\\_smartship\\_%'
+           OR option_name LIKE '\\_transient\\_timeout\\_webbership\\_smartship\\_%'"
     );
   }
 }

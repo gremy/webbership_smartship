@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Api;
+namespace Webbership\Smartship\Api;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  *   [ 'ok'=>bool, 'status'=>int, 'http'=>int, 'code'=>string,
  *     'message'=>string, 'errors'=>array, ...payload ]
  *
- * @package Ovride\Smartship\Api
+ * @package Webbership\Smartship\Api
  */
 final class SmartShipClient {
   public const BASE_URL     = 'https://api.smartship.ro';
@@ -97,7 +97,7 @@ final class SmartShipClient {
       }
       return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
     }
-    return $this->error( $http, 'cancel_failed', __( 'SmartShip did not confirm the cancellation.', 'ovride-smartship' ) );
+    return $this->error( $http, 'cancel_failed', __( 'SmartShip did not confirm the cancellation.', 'webbership-smartship' ) );
   }
 
   public function print_awb( string $awb, string $format = 'A4' ): array {
@@ -119,12 +119,12 @@ final class SmartShipClient {
       $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
       return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
     }
-    return $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'ovride-smartship' ) );
+    return $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'webbership-smartship' ) );
   }
 
   /** Cache a successful tuple under an API-key-fingerprinted transient. */
   private function cached( string $key, int $ttl, callable $fetch ): array {
-    $tk  = 'ovride_ss_' . substr( md5( $this->api_key ), 0, 12 ) . '_' . $key;
+    $tk  = 'webbership_ss_' . substr( md5( $this->api_key ), 0, 12 ) . '_' . $key;
     $hit = get_transient( $tk );
     if ( is_array( $hit ) ) {
       return $hit;
@@ -166,7 +166,7 @@ final class SmartShipClient {
     $body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 
     if ( ! is_array( $body ) ) {
-      return $this->error( $http, 'invalid_json', __( 'Unexpected response from SmartShip.', 'ovride-smartship' ) );
+      return $this->error( $http, 'invalid_json', __( 'Unexpected response from SmartShip.', 'webbership-smartship' ) );
     }
 
     // Success requires a STRICT integer 200 in the body — a non-integer like
@@ -213,7 +213,7 @@ final class SmartShipClient {
 
   private function error_message( int $status, array $body ): string {
     if ( 205 === $status ) {
-      return __( 'SmartShip requires an IBAN for cash-on-delivery. Add it in the plugin settings.', 'ovride-smartship' );
+      return __( 'SmartShip requires an IBAN for cash-on-delivery. Add it in the plugin settings.', 'webbership-smartship' );
     }
     if ( ! empty( $body['message'] ) ) {
       return (string) $body['message'];
@@ -222,7 +222,7 @@ final class SmartShipClient {
       return (string) $body['error'];
     }
     /* translators: %d: SmartShip in-body status code. */
-    return sprintf( __( 'SmartShip returned status %d.', 'ovride-smartship' ), $status );
+    return sprintf( __( 'SmartShip returned status %d.', 'webbership-smartship' ), $status );
   }
 
   private function error( int $http, string $code, string $message ): array {

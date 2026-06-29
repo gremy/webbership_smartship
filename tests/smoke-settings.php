@@ -5,9 +5,9 @@ declare(strict_types=1);
 
 define( 'ABSPATH', __DIR__ );
 
-$GLOBALS['ovride_options'] = [];
-function get_option( $k, $d = false ) { return $GLOBALS['ovride_options'][ $k ] ?? $d; }
-function update_option( $k, $v, $a = null ) { $GLOBALS['ovride_options'][ $k ] = $v; return true; }
+$GLOBALS['webbership_options'] = [];
+function get_option( $k, $d = false ) { return $GLOBALS['webbership_options'][ $k ] ?? $d; }
+function update_option( $k, $v, $a = null ) { $GLOBALS['webbership_options'][ $k ] = $v; return true; }
 function wp_parse_args( $a, $d ) { return array_merge( $d, is_array( $a ) ? $a : [] ); }
 function __( $t, $d = 'default' ) { return $t; }
 function absint( $v ) { return abs( (int) $v ); }
@@ -25,12 +25,12 @@ function assert_same( $expected, $actual, string $msg ): void {
 
 require_once __DIR__ . '/../includes/Settings/class-settings.php';
 
-use Ovride\Smartship\Settings\Settings;
+use Webbership\Smartship\Settings\Settings;
 
 $s = new Settings();
 
 // Blank api_key submission keeps the stored key; debug toggles on.
-$GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'EXISTING', 'debug' => 'no' ];
+$GLOBALS['webbership_options'][ Settings::OPTION ] = [ 'api_key' => 'EXISTING', 'debug' => 'no' ];
 $out = $s->sanitize( [ 'api_key' => '', 'debug' => 'yes' ] );
 assert_same( 'EXISTING', $out['api_key'], 'blank submit keeps key' );
 assert_same( 'yes', $out['debug'], 'debug toggled on' );
@@ -41,12 +41,12 @@ assert_same( 'NEWKEY', $out['api_key'], 'new key trimmed + stored' );
 assert_same( 'no', $out['debug'], 'debug defaults no' );
 
 // api_key() reads the DB...
-$GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'DBKEY', 'debug' => 'no' ];
+$GLOBALS['webbership_options'][ Settings::OPTION ] = [ 'api_key' => 'DBKEY', 'debug' => 'no' ];
 assert_same( 'DBKEY', Settings::api_key(), 'api_key from DB' );
 assert_true( Settings::key_is_constant() === false, 'no constant yet' );
 
 // ...but the wp-config constant overrides it.
-define( 'OVRIDE_SMARTSHIP_API_KEY', 'CONSTKEY' );
+define( 'WEBBERSHIP_SMARTSHIP_API_KEY', 'CONSTKEY' );
 assert_same( 'CONSTKEY', Settings::api_key(), 'constant overrides DB' );
 assert_true( Settings::key_is_constant() === true, 'constant detected' );
 
@@ -54,12 +54,12 @@ assert_true( Settings::key_is_constant() === true, 'constant detected' );
 $out = $s->sanitize( [ 'api_key' => '', 'sender_id' => '8848', 'iban' => ' RO49AAAA1B31007593840000 ' ] );
 assert_same( 8848, $out['sender_id'], 'sender_id sanitized to int' );
 assert_same( 'RO49AAAA1B31007593840000', $out['iban'], 'iban trimmed' );
-$GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'sender_id' => 8848, 'iban' => 'RO49AAAA1B31007593840000' ];
+$GLOBALS['webbership_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'sender_id' => 8848, 'iban' => 'RO49AAAA1B31007593840000' ];
 assert_same( 8848, Settings::sender_id(), 'sender_id accessor' );
 assert_same( 'RO49AAAA1B31007593840000', Settings::iban(), 'iban accessor' );
 
 // IBAN validation: a valid RO IBAN is kept; an invalid one keeps the previously-stored value.
-$GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'iban' => 'RO11BBBB1B31007593840000' ];
+$GLOBALS['webbership_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'iban' => 'RO11BBBB1B31007593840000' ];
 $out = $s->sanitize( [ 'api_key' => '', 'iban' => 'RO49AAAA1B31007593840000' ] );
 assert_same( 'RO49AAAA1B31007593840000', $out['iban'], 'valid IBAN kept' );
 $out = $s->sanitize( [ 'api_key' => '', 'iban' => 'RO123' ] );

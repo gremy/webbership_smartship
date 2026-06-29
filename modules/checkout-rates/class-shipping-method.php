@@ -1,19 +1,19 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Modules\CheckoutRates;
+namespace Webbership\Smartship\Modules\CheckoutRates;
 
-use Ovride\Smartship\Api\SmartShipClient;
-use Ovride\Smartship\Support\CityResolver;
-use Ovride\Smartship\Settings\Settings;
-use Ovride\Smartship\Modules\Awb\Data\AwbPayload;
+use Webbership\Smartship\Api\SmartShipClient;
+use Webbership\Smartship\Support\CityResolver;
+use Webbership\Smartship\Settings\Settings;
+use Webbership\Smartship\Modules\Awb\Data\AwbPayload;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Live SmartShip checkout rates (instance-based, per zone).
  *
- * @package Ovride\Smartship\Modules\CheckoutRates
+ * @package Webbership\Smartship\Modules\CheckoutRates
  */
 final class ShippingMethod extends \WC_Shipping_Method {
 
@@ -24,10 +24,10 @@ final class ShippingMethod extends \WC_Shipping_Method {
   ];
 
   public function __construct( $instance_id = 0 ) {
-    $this->id                 = 'ovride_smartship';
+    $this->id                 = 'webbership_smartship';
     $this->instance_id        = absint( $instance_id );
-    $this->method_title       = __( 'SmartShip Live Rates', 'ovride-smartship' );
-    $this->method_description = __( 'Live courier rates from SmartShip, with a fallback flat rate.', 'ovride-smartship' );
+    $this->method_title       = __( 'SmartShip Live Rates', 'webbership-smartship' );
+    $this->method_description = __( 'Live courier rates from SmartShip, with a fallback flat rate.', 'webbership-smartship' );
     $this->supports           = [ 'shipping-zones', 'instance-settings', 'instance-settings-modal' ];
     $this->init();
   }
@@ -47,46 +47,46 @@ final class ShippingMethod extends \WC_Shipping_Method {
     }
     $this->instance_form_fields = [
       'title' => [
-        'title'       => __( 'Method title', 'ovride-smartship' ),
+        'title'       => __( 'Method title', 'webbership-smartship' ),
         'type'        => 'text',
-        'default'     => __( 'SmartShip', 'ovride-smartship' ),
+        'default'     => __( 'SmartShip', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'couriers' => [
-        'title'       => __( 'Couriers to offer', 'ovride-smartship' ),
+        'title'       => __( 'Couriers to offer', 'webbership-smartship' ),
         'type'        => 'multiselect',
         'class'       => 'wc-enhanced-select',
         'options'     => $courier_options,
         'default'     => [],
-        'description' => __( 'Leave empty to offer every courier SmartShip returns.', 'ovride-smartship' ),
+        'description' => __( 'Leave empty to offer every courier SmartShip returns.', 'webbership-smartship' ),
       ],
       'labels' => [
-        'title'       => __( 'Courier label overrides', 'ovride-smartship' ),
+        'title'       => __( 'Courier label overrides', 'webbership-smartship' ),
         'type'        => 'textarea',
         'default'     => '',
-        'description' => __( 'One per line: courier_id|Custom label (e.g. 16|Curier rapid).', 'ovride-smartship' ),
+        'description' => __( 'One per line: courier_id|Custom label (e.g. 16|Curier rapid).', 'webbership-smartship' ),
       ],
       'markup_type' => [
-        'title'   => __( 'Markup', 'ovride-smartship' ),
+        'title'   => __( 'Markup', 'webbership-smartship' ),
         'type'    => 'select',
         'default' => 'none',
-        'options' => [ 'none' => __( 'None', 'ovride-smartship' ), 'flat' => __( 'Flat amount', 'ovride-smartship' ), 'percent' => __( 'Percent', 'ovride-smartship' ) ],
+        'options' => [ 'none' => __( 'None', 'webbership-smartship' ), 'flat' => __( 'Flat amount', 'webbership-smartship' ), 'percent' => __( 'Percent', 'webbership-smartship' ) ],
       ],
       'markup_amount' => [
-        'title'   => __( 'Markup amount', 'ovride-smartship' ),
+        'title'   => __( 'Markup amount', 'webbership-smartship' ),
         'type'    => 'text',
         'default' => '0',
       ],
       'fallback_amount' => [
-        'title'       => __( 'Fallback flat rate', 'ovride-smartship' ),
+        'title'       => __( 'Fallback flat rate', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => '0',
-        'description' => __( 'Shown when live rates are unavailable.', 'ovride-smartship' ),
+        'description' => __( 'Shown when live rates are unavailable.', 'webbership-smartship' ),
       ],
       'fallback_title' => [
-        'title'   => __( 'Fallback label', 'ovride-smartship' ),
+        'title'   => __( 'Fallback label', 'webbership-smartship' ),
         'type'    => 'text',
-        'default' => __( 'Shipping', 'ovride-smartship' ),
+        'default' => __( 'Shipping', 'webbership-smartship' ),
       ],
     ];
   }
@@ -107,7 +107,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
       'markup_type'     => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
       'markup_amount'   => max( 0.0, (float) $this->get_option( 'markup_amount', 0 ) ),
       'fallback_amount' => max( 0.0, (float) $this->get_option( 'fallback_amount', 0 ) ),
-      'fallback_title'  => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Shipping', 'ovride-smartship' ) ) ),
+      'fallback_title'  => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Shipping', 'webbership-smartship' ) ) ),
     ];
   }
 
@@ -173,12 +173,12 @@ final class ShippingMethod extends \WC_Shipping_Method {
 
   /** Cached /cost costs[] for (city, weight); null on failure (and sets a brief failure-cache). */
   private function fetch_costs( SmartShipClient $client, int $city_id, int $weight, string $address, array $sender ) {
-    $key    = 'ovride_ss_rate_' . md5( $city_id . '|' . $weight );
+    $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight );
     $cached = get_transient( $key );
     if ( is_array( $cached ) ) {
       return $cached;
     }
-    if ( get_transient( 'ovride_ss_rate_fail' ) ) {
+    if ( get_transient( 'webbership_ss_rate_fail' ) ) {
       return null;
     }
     $body = [
@@ -188,13 +188,13 @@ final class ShippingMethod extends \WC_Shipping_Method {
     ];
     $res = $client->cost( $body, SmartShipClient::RATE_TIMEOUT );
     if ( empty( $res['ok'] ) ) {
-      set_transient( 'ovride_ss_rate_fail', 1, MINUTE_IN_SECONDS );
+      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
       return null;
     }
     $costs = $res['costs'] ?? ( $res['response']['costs'] ?? [] );
     // A malformed ok-response (costs not an array) must fall back, not fatal build_rates(array).
     if ( ! is_array( $costs ) ) {
-      set_transient( 'ovride_ss_rate_fail', 1, MINUTE_IN_SECONDS );
+      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
       return null;
     }
     set_transient( $key, $costs, 10 * MINUTE_IN_SECONDS );
@@ -207,7 +207,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
     if ( $id <= 0 ) {
       return [];
     }
-    $tk    = 'ovride_ss_sender_block_' . $id;
+    $tk    = 'webbership_ss_sender_block_' . $id;
     $block = get_transient( $tk );
     if ( is_array( $block ) ) {
       return $block;

@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Modules\CheckoutRates;
+namespace Webbership\Smartship\Modules\CheckoutRates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Pure rate-building: a SmartShip /cost `costs[]` array + method config -> WC rate rows.
  *
- * @package Ovride\Smartship\Modules\CheckoutRates
+ * @package Webbership\Smartship\Modules\CheckoutRates
  */
 final class RateCalculator {
 
@@ -36,7 +36,7 @@ final class RateCalculator {
         ? (string) $labels[ $cid ]
         : (string) ( $c['courier_name'] ?? ( 'Courier ' . $cid ) );
       $rates[] = [
-        'id'         => 'ovride_smartship:' . $cid,
+        'id'         => 'webbership_smartship:' . $cid,
         'label'      => $label,
         'cost'       => self::apply_markup( (float) ( $c['cost'] ?? 0 ), $config ),
         'courier_id' => $cid,
@@ -47,7 +47,7 @@ final class RateCalculator {
 
   public static function fallback_rate( array $config ): array {
     return [
-      'id'    => 'ovride_smartship:fallback',
+      'id'    => 'webbership_smartship:fallback',
       'label' => (string) ( $config['fallback_title'] ?? 'Shipping' ),
       'cost'  => max( 0.0, (float) ( $config['fallback_amount'] ?? 0 ) ),
     ];

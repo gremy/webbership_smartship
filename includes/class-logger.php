@@ -1,19 +1,19 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship;
+namespace Webbership\Smartship;
 
-use Ovride\Smartship\Settings\Settings;
+use Webbership\Smartship\Settings\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Thin wrapper over wc_get_logger() with API-key redaction.
  *
- * @package Ovride\Smartship
+ * @package Webbership\Smartship
  */
 final class Logger {
-  private const SOURCE = 'ovride-smartship';
+  private const SOURCE = 'webbership-smartship';
 
   public static function error( string $message, array $context = [] ): void {
     self::log( 'error', $message, $context );

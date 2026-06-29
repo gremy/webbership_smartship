@@ -1,9 +1,9 @@
-# Copyright (C) 2026 OVRIDE Coffee
+# Copyright (C) 2026 WEBBERSHIP Coffee
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: OVRIDE SmartShip 0.1.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ovride-smartship\n"
+"Project-Id-Version: WEBBERSHIP SmartShip 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/webbership-smartship\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -12,26 +12,26 @@ msgstr ""
 "POT-Creation-Date: 2026-06-29T18:04:04+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
-"X-Domain: ovride-smartship\n"
+"X-Domain: webbership-smartship\n"
 
 #. Plugin Name of the plugin
-#: ovride-smartship.php
-msgid "OVRIDE SmartShip"
+#: webbership-smartship.php
+msgid "WEBBERSHIP SmartShip"
 msgstr ""
 
 #. Plugin URI of the plugin
-#: ovride-smartship.php
-msgid "https://github.com/gremy/ovride"
+#: webbership-smartship.php
+msgid "https://github.com/gremy/webbership"
 msgstr ""
 
 #. Description of the plugin
-#: ovride-smartship.php
+#: webbership-smartship.php
 msgid "SmartShip.ro courier integration for WooCommerce: live checkout rates, AWB issuance, and SameDay EasyBox locker delivery."
 msgstr ""
 
 #. Author of the plugin
-#: ovride-smartship.php
-msgid "OVRIDE Coffee"
+#: webbership-smartship.php
+msgid "WEBBERSHIP Coffee"
 msgstr ""
 
 #: includes/Api/class-smartship-client.php:100
@@ -85,7 +85,7 @@ msgid "API key"
 msgstr ""
 
 #: includes/Settings/class-settings.php:151
-msgid "Defined in wp-config.php (OVRIDE_SMARTSHIP_API_KEY); the database value is ignored."
+msgid "Defined in wp-config.php (WEBBERSHIP_SMARTSHIP_API_KEY); the database value is ignored."
 msgstr ""
 
 #: includes/Settings/class-settings.php:162

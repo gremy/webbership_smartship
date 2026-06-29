@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship;
+namespace Webbership\Smartship;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Base class for plugin modules.
  *
- * @package Ovride\Smartship
+ * @package Webbership\Smartship
  */
 abstract class Module {
   abstract public function name(): string;

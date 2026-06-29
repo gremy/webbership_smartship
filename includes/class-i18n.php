@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship;
+namespace Webbership\Smartship;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Loads plugin translations.
  *
- * @package Ovride\Smartship
+ * @package Webbership\Smartship
  */
 final class I18n {
   public function register(): void {
@@ -18,9 +18,9 @@ final class I18n {
 
   public function load_textdomain(): void {
     load_plugin_textdomain(
-      'ovride-smartship',
+      'webbership-smartship',
       false,
-      dirname( plugin_basename( OVRIDE_SMARTSHIP_FILE ) ) . '/languages'
+      dirname( plugin_basename( WEBBERSHIP_SMARTSHIP_FILE ) ) . '/languages'
     );
   }
 }

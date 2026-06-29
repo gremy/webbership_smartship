@@ -25,7 +25,7 @@ class FakeClient {
 
 require_once __DIR__ . '/../includes/Api/class-smartship-client.php';
 require_once __DIR__ . '/../includes/Support/class-city-resolver.php';
-use Ovride\Smartship\Support\CityResolver;
+use Webbership\Smartship\Support\CityResolver;
 
 $r = new CityResolver( new FakeClient() );
 

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Modules\Awb\Data;
+namespace Webbership\Smartship\Modules\Awb\Data;
 
 defined( 'ABSPATH' ) || exit;
 
-use Ovride\Smartship\Settings\Settings;
+use Webbership\Smartship\Settings\Settings;
 
 /**
  * Builds the SmartShip recipient/sender/content payload from a WC_Order.
  *
- * @package Ovride\Smartship\Modules\Awb\Data
+ * @package Webbership\Smartship\Modules\Awb\Data
  */
 final class AwbPayload {
 

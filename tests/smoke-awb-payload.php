@@ -11,7 +11,7 @@ namespace {
   function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
 }
 
-namespace Ovride\Smartship\Settings {
+namespace Webbership\Smartship\Settings {
   final class Settings {
     public static function iban(): string {
       return '';
@@ -54,7 +54,7 @@ namespace {
 
   // recipient: shipping name preferred, billing phone fallback, resolved city id.
   $o = new FakeOrder( [ 's_first' => 'Ion', 's_last' => 'Pop', 's_addr' => 'Str. A 1', 'email' => 't@e.com', 's_phone' => '', 'b_phone' => '0720000000' ] );
-  $rec = Ovride\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $o, [ 'city_id' => 263852 ] );
+  $rec = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $o, [ 'city_id' => 263852 ] );
   assert_same( 'Ion Pop', $rec['name'], 'recipient name' );
   assert_same( '0720000000', $rec['phone'], 'phone fallback to billing' );
   assert_same( 263852, $rec['city'], 'recipient city id' );
@@ -62,30 +62,30 @@ namespace {
 
   // recipient: address_2 joined to address_1 from the same (shipping) source.
   $oa = new FakeOrder( [ 's_addr' => 'Str. A 1', 's_addr2' => 'Bl. 2 Ap. 3' ] );
-  $reca = Ovride\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $oa, [ 'city_id' => 1 ] );
+  $reca = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $oa, [ 'city_id' => 1 ] );
   assert_same( 'Str. A 1 Bl. 2 Ap. 3', $reca['address'], 'recipient address joins address_1 + address_2' );
 
   // content: weight floor 1kg, COD from total when unpaid, package_content from order number.
   $o2 = new FakeOrder( [ 'num' => '1234', 'total' => '149.99', 'paid' => false, 'items' => [ new FakeItem( new FakeProduct( '0.2' ) ) ] ] );
-  $c = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o2 );
+  $c = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o2 );
   assert_same( 1.0, $c['weight'], 'weight floor 1kg' );
   assert_true( abs( $c['cash_on_delivery'] - 149.99 ) < 0.001, 'COD from total (unpaid)' );
   assert_true( strpos( $c['package_content'], '1234' ) !== false, 'package_content has order number' );
 
   // content: COD 0 when paid and not cod.
   $o3 = new FakeOrder( [ 'num' => '9', 'total' => '50', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '2' ) ) ] ] );
-  $c3 = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o3 );
+  $c3 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o3 );
   assert_same( 0.0, $c3['cash_on_delivery'], 'COD 0 when paid+card' );
   assert_same( 2.0, $c3['weight'], 'weight from items' );
 
   // content: paid + cod still ships COD (exercises the `|| 'cod' === payment_method` branch).
   $o4 = new FakeOrder( [ 'num' => '7', 'total' => '80', 'paid' => true, 'pay' => 'cod', 'items' => [ new FakeItem( new FakeProduct( '1' ) ) ] ] );
-  $c4 = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o4 );
+  $c4 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o4 );
   assert_same( 80.0, $c4['cash_on_delivery'], 'COD from total when paid+cod' );
 
   // content: empty product weight contributes 0; 0.3 < 1.0 floors to 1kg.
   $o5 = new FakeOrder( [ 'num' => '5', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '' ) ), new FakeItem( new FakeProduct( '0.3' ) ) ] ] );
-  $c5 = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o5 );
+  $c5 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o5 );
   assert_same( 1.0, $c5['weight'], 'missing weight contributes 0, floors to 1kg' );
 
   echo "smoke-awb-payload: all assertions passed\n";

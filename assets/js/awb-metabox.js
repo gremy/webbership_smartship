@@ -1,19 +1,19 @@
 ( function ( $ ) {
-  function box() { return $( '.ovride-ss-awb' ); }
+  function box() { return $( '.webbership-ss-awb' ); }
   function orderId() { return box().data( 'order' ); }
 
   // Chosen override (set when the merchant picks a city); threaded into re-estimate + issue.
   var override = { county_id: 0, city_id: 0 };
 
   function runEstimate() {
-    var $msg = $( '.ovride-ss-msg' ).text( 'Estimating…' );
-    var data = { action: 'ovride_smartship_estimate', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId() };
+    var $msg = $( '.webbership-ss-msg' ).text( 'Estimating…' );
+    var data = { action: 'webbership_smartship_estimate', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
-    $.post( OvrideSmartShip.ajax, data ).done( function ( r ) {
+    $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : 'Failed' ); return; }
       // No city resolved yet: show the picker, withhold couriers/Issue until re-estimate.
       if ( r.data.needs_city ) {
-        $( '.ovride-ss-couriers' ).empty();
+        $( '.webbership-ss-couriers' ).empty();
         maybeRenderCityPicker( r.data.resolved );
         $msg.text( 'Pick the destination city, then Re-estimate.' );
         return;
@@ -25,7 +25,7 @@
   }
 
   function renderCouriers( costs ) {
-    var $c = $( '.ovride-ss-couriers' ).empty();
+    var $c = $( '.webbership-ss-couriers' ).empty();
     costs.forEach( function ( c ) {
       var id = 'ss-c-' + c.courier_id;
       $c.append( $( '<label/>' ).append(
@@ -33,28 +33,28 @@
         ' ', document.createTextNode( c.courier_name + ' — ' + c.cost + ' lei (' + ( c.delivery_date || '' ) + ')' ), '<br/>'
       ) );
     } );
-    $c.append( $( '<button type="button" class="button button-primary ovride-ss-issue">' ).text( 'Issue AWB' ) );
+    $c.append( $( '<button type="button" class="button button-primary webbership-ss-issue">' ).text( 'Issue AWB' ) );
   }
 
   // Resolver wasn't confident: let the merchant pick the city for the resolved county.
   function maybeRenderCityPicker( resolved ) {
     if ( ! resolved || resolved.confident !== false || ! resolved.county_id ) { return; }
-    var $wrap = $( '.ovride-ss-city-picker' );
+    var $wrap = $( '.webbership-ss-city-picker' );
     if ( ! $wrap.length ) {
-      $wrap = $( '<div class="ovride-ss-city-picker"/>' );
+      $wrap = $( '<div class="webbership-ss-city-picker"/>' );
       box().append( $wrap );
     }
     $wrap.empty();
     $wrap.append( $( '<p/>' ).text( "Couldn't match the city — pick it:" ) );
-    var $sel = $( '<select class="ovride-ss-city"/>' );
+    var $sel = $( '<select class="webbership-ss-city"/>' );
     // Placeholder so no real city is pre-selected: the merchant must pick the
     // correct one explicitly (auto-selecting the first city could be wrong), and
     // override.city_id stays 0 until a real choice fires `change`.
     $sel.append( $( '<option/>' ).val( '' ).prop( 'disabled', true ).prop( 'selected', true ).text( '— Select city —' ) );
     $wrap.append( $sel );
-    $wrap.append( $( '<button type="button" class="button ovride-ss-reestimate">' ).text( 'Re-estimate' ) );
-    $.post( OvrideSmartShip.ajax, {
-      action: 'ovride_smartship_cities', _ajax_nonce: OvrideSmartShip.nonce,
+    $wrap.append( $( '<button type="button" class="button webbership-ss-reestimate">' ).text( 'Re-estimate' ) );
+    $.post( WebbershipSmartShip.ajax, {
+      action: 'webbership_smartship_cities', _ajax_nonce: WebbershipSmartShip.nonce,
       order_id: orderId(), county_id: resolved.county_id
     } ).done( function ( r ) {
       if ( ! r.success ) { return; }
@@ -71,51 +71,51 @@
     override = { county_id: resolved.county_id, city_id: parseInt( $sel.val(), 10 ) || 0 };
   }
 
-  $( document ).on( 'change', '.ovride-ss-city', function () {
+  $( document ).on( 'change', '.webbership-ss-city', function () {
     override.city_id = parseInt( $( this ).val(), 10 ) || 0;
     // City changed → the prior estimate's couriers (and Issue button) are stale for
     // the new destination; clear them so the merchant must Re-estimate before issuing.
-    $( '.ovride-ss-couriers' ).empty();
-    $( '.ovride-ss-msg' ).text( override.city_id ? 'City changed — click Re-estimate.' : '' );
+    $( '.webbership-ss-couriers' ).empty();
+    $( '.webbership-ss-msg' ).text( override.city_id ? 'City changed — click Re-estimate.' : '' );
   } );
 
-  $( document ).on( 'click', '.ovride-ss-estimate', function () {
+  $( document ).on( 'click', '.webbership-ss-estimate', function () {
     override = { county_id: 0, city_id: 0 };
     runEstimate();
   } );
 
-  $( document ).on( 'click', '.ovride-ss-reestimate', function () {
-    var $wrap = $( '.ovride-ss-city-picker' );
-    var city  = $wrap.find( '.ovride-ss-city' ).val();
-    if ( ! city ) { $( '.ovride-ss-msg' ).text( 'Pick a city.' ); return; }
+  $( document ).on( 'click', '.webbership-ss-reestimate', function () {
+    var $wrap = $( '.webbership-ss-city-picker' );
+    var city  = $wrap.find( '.webbership-ss-city' ).val();
+    if ( ! city ) { $( '.webbership-ss-msg' ).text( 'Pick a city.' ); return; }
     override = { county_id: $wrap.data( 'county' ), city_id: city };
     runEstimate();
   } );
 
-  $( document ).on( 'click', '.ovride-ss-issue', function () {
+  $( document ).on( 'click', '.webbership-ss-issue', function () {
     var courier = $( 'input[name=ss_courier]:checked' ).val();
-    if ( ! courier ) { $( '.ovride-ss-msg' ).text( 'Pick a courier.' ); return; }
+    if ( ! courier ) { $( '.webbership-ss-msg' ).text( 'Pick a courier.' ); return; }
     // A city picker shown but no city chosen → don't issue with an unresolved address.
-    if ( $( '.ovride-ss-city' ).length && ! override.city_id ) {
-      $( '.ovride-ss-msg' ).text( 'Select the destination city first.' ); return;
+    if ( $( '.webbership-ss-city' ).length && ! override.city_id ) {
+      $( '.webbership-ss-msg' ).text( 'Select the destination city first.' ); return;
     }
-    $( '.ovride-ss-msg' ).text( 'Issuing…' );
-    var data = { action: 'ovride_smartship_issue', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId(), courier_id: courier };
+    $( '.webbership-ss-msg' ).text( 'Issuing…' );
+    var data = { action: 'webbership_smartship_issue', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId(), courier_id: courier };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
-    $.post( OvrideSmartShip.ajax, data ).done( function ( r ) {
-      if ( ! r.success ) { $( '.ovride-ss-msg' ).text( r.data && r.data.message ? r.data.message : 'Failed' ); return; }
+    $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
+      if ( ! r.success ) { $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : 'Failed' ); return; }
       window.location.reload();
     } );
   } );
 
-  $( document ).on( 'click', '.ovride-ss-cancel', function () {
+  $( document ).on( 'click', '.webbership-ss-cancel', function () {
     if ( ! window.confirm( 'Cancel this AWB?' ) ) { return; }
-    $.post( OvrideSmartShip.ajax, { action: 'ovride_smartship_cancel', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId() } )
+    $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_cancel', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() } )
       .done( function ( r ) { if ( r.success ) { window.location.reload(); } else { alert( r.data && r.data.message ); } } );
   } );
-  $( document ).on( 'click', '.ovride-ss-track', function () {
-    var $t = $( '.ovride-ss-tracking' ).text( 'Loading…' );
-    $.post( OvrideSmartShip.ajax, { action: 'ovride_smartship_status', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId() } )
+  $( document ).on( 'click', '.webbership-ss-track', function () {
+    var $t = $( '.webbership-ss-tracking' ).text( 'Loading…' );
+    $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_status', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() } )
       .done( function ( r ) { $t.text( r.success ? JSON.stringify( r.data.history || r.data ) : ( r.data && r.data.message ) ); } );
   } );
 } )( jQuery );

@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship\Support;
+namespace Webbership\Smartship\Support;
 
 defined( 'ABSPATH' ) || exit;
 
-use Ovride\Smartship\Api\SmartShipClient;
+use Webbership\Smartship\Api\SmartShipClient;
 
 /**
  * Resolves a WooCommerce RO address (county ISO code + city name) to SmartShip
  * integer ids. Returns confident=false whenever a part can't be matched unambiguously.
  *
- * @package Ovride\Smartship\Support
+ * @package Webbership\Smartship\Support
  */
 final class CityResolver {
   /** WooCommerce RO state (ISO 3166-2) code => county name (as SmartShip spells it). */

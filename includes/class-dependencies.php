@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Ovride\Smartship;
+namespace Webbership\Smartship;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Runtime dependency probes.
  *
- * @package Ovride\Smartship
+ * @package Webbership\Smartship
  */
 final class Dependencies {
   public static function woocommerce_active(): bool {
@@ -16,6 +16,6 @@ final class Dependencies {
   }
 
   public static function smartship_configured(): bool {
-    return \Ovride\Smartship\Settings\Settings::api_key() !== '';
+    return \Webbership\Smartship\Settings\Settings::api_key() !== '';
   }
 }
