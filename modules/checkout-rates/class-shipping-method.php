@@ -132,7 +132,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
       return;
     }
     $client   = new SmartShipClient( $api_key );
-    $resolved = ( new CityResolver( $client ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ) );
+    $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ) );
     if ( empty( $resolved['city_id'] ) ) {
       $this->add_fallback( $config );
       return;
@@ -192,6 +192,11 @@ final class ShippingMethod extends \WC_Shipping_Method {
       return null;
     }
     $costs = $res['costs'] ?? ( $res['response']['costs'] ?? [] );
+    // A malformed ok-response (costs not an array) must fall back, not fatal build_rates(array).
+    if ( ! is_array( $costs ) ) {
+      set_transient( 'ovride_ss_rate_fail', 1, MINUTE_IN_SECONDS );
+      return null;
+    }
     set_transient( $key, $costs, 10 * MINUTE_IN_SECONDS );
     return $costs;
   }
@@ -207,10 +212,15 @@ final class ShippingMethod extends \WC_Shipping_Method {
     if ( is_array( $block ) ) {
       return $block;
     }
-    $res = $client->get_senders();
+    $res = $client->get_senders( SmartShipClient::RATE_TIMEOUT );
     foreach ( (array) ( $res['senders'] ?? [] ) as $s ) {
       if ( (int) ( $s['id'] ?? 0 ) === $id ) {
         $block = AwbPayload::sender_from_account( $s );
+        // A usable sender block needs at least a name and a (nonzero int) city id;
+        // an incomplete one would make /cost fail anyway, so reject (and don't cache) it.
+        if ( empty( $block['name'] ) || empty( $block['city'] ) ) {
+          return [];
+        }
         set_transient( $tk, $block, DAY_IN_SECONDS );
         return $block;
       }

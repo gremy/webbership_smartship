@@ -130,6 +130,14 @@ ss_set_response( 200, [ 'status' => 200, 'cities' => [ [ 'id' => 251695, 'city' 
 $client->get_cities( 7 );
 assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], 'county=7' ) !== false, 'cities: county id' );
 
+// 9b) get_counties / get_senders thread a checkout timeout down to request() (no-cache stubs always hit request).
+ss_set_response( 200, [ 'status' => 200, 'counties' => [] ] );
+$client->get_counties( 7 );
+assert_same( 7, $GLOBALS['ovride_ss_last_request']['args']['timeout'], 'counties: custom timeout' );
+ss_set_response( 200, [ 'status' => 200, 'senders' => [] ] );
+$client->get_senders( 5 );
+assert_same( 5, $GLOBALS['ovride_ss_last_request']['args']['timeout'], 'senders: custom timeout' );
+
 // 10) cost sends shop headers; create_awb does not.
 ss_set_response( 200, [ 'status' => 200, 'costs' => [] ] );
 $client->cost( [ 'recipient' => [], 'sender' => [], 'content' => [] ] );

@@ -34,8 +34,12 @@ final class CityResolver {
    */
   private $client;
 
-  public function __construct( $client ) {
-    $this->client = $client;
+  /** @var int Request timeout for the geo calls (checkout passes RATE_TIMEOUT). */
+  private $timeout;
+
+  public function __construct( $client, int $timeout = SmartShipClient::TIMEOUT ) {
+    $this->client  = $client;
+    $this->timeout = $timeout;
   }
 
   public function resolve( string $county_code, string $city_name ): array {
@@ -46,7 +50,7 @@ final class CityResolver {
       return $miss;
     }
 
-    $counties = $this->client->get_counties();
+    $counties = $this->client->get_counties( $this->timeout );
     if ( empty( $counties['ok'] ) ) {
       return $miss;
     }
@@ -62,7 +66,7 @@ final class CityResolver {
       return $miss;
     }
 
-    $cities = $this->client->get_cities( $county_id );
+    $cities = $this->client->get_cities( $county_id, $this->timeout );
     if ( empty( $cities['ok'] ) ) {
       return [ 'county_id' => $county_id, 'city_id' => null, 'confident' => false ];
     }

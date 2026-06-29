@@ -40,21 +40,21 @@ final class SmartShipClient {
     return $this->request( 'GET', '/account/senders' );
   }
 
-  public function get_counties(): array {
-    return $this->cached( 'counties', 12 * HOUR_IN_SECONDS, function () {
-      return $this->request( 'GET', '/geolocation/counties', [ 'query' => [ 'country' => 'RO' ] ] );
+  public function get_counties( int $timeout = self::TIMEOUT ): array {
+    return $this->cached( 'counties', 12 * HOUR_IN_SECONDS, function () use ( $timeout ) {
+      return $this->request( 'GET', '/geolocation/counties', [ 'query' => [ 'country' => 'RO' ], 'timeout' => $timeout ] );
     } );
   }
 
-  public function get_cities( int $county_id ): array {
-    return $this->cached( 'cities_' . $county_id, 12 * HOUR_IN_SECONDS, function () use ( $county_id ) {
-      return $this->request( 'GET', '/geolocation/cities', [ 'query' => [ 'county' => $county_id ] ] );
+  public function get_cities( int $county_id, int $timeout = self::TIMEOUT ): array {
+    return $this->cached( 'cities_' . $county_id, 12 * HOUR_IN_SECONDS, function () use ( $county_id, $timeout ) {
+      return $this->request( 'GET', '/geolocation/cities', [ 'query' => [ 'county' => $county_id ], 'timeout' => $timeout ] );
     } );
   }
 
-  public function get_senders(): array {
-    return $this->cached( 'senders', 5 * 60, function () {
-      return $this->request( 'GET', '/account/senders' );
+  public function get_senders( int $timeout = self::TIMEOUT ): array {
+    return $this->cached( 'senders', 5 * 60, function () use ( $timeout ) {
+      return $this->request( 'GET', '/account/senders', [ 'timeout' => $timeout ] );
     } );
   }
 
