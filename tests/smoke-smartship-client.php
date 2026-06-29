@@ -18,6 +18,11 @@ function wp_json_encode( $data ) { return json_encode( $data ); }
 function get_bloginfo( $k ) { return 'Test Shop'; }
 function home_url() { return 'https://shop.test'; }
 function wp_specialchars_decode( $s, $q = null ) { return $s; }
+function get_transient( $k ) { return false; }
+function set_transient( $k, $v, $ttl ) { return true; }
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) { define( 'HOUR_IN_SECONDS', 3600 ); }
+function wp_remote_get( $url, $args = [] ) { return wp_remote_request( $url, $args ); }
+function wp_remote_retrieve_header( $r, $h ) { return is_array( $r ) ? ( $r['headers'][ strtolower( $h ) ] ?? '' ) : ''; }
 
 class WP_Error {
   private $code; private $message;
@@ -35,10 +40,11 @@ function wp_remote_post( $url, $args = [] ) { return wp_remote_request( $url, $a
 function wp_remote_retrieve_response_code( $r ) { return is_array( $r ) ? ( $r['response']['code'] ?? 0 ) : 0; }
 function wp_remote_retrieve_body( $r ) { return is_array( $r ) ? ( $r['body'] ?? '' ) : ''; }
 
-function ss_set_response( $http_code, $body ): void {
+function ss_set_response( $http_code, $body, $headers = [] ) {
   $GLOBALS['ovride_ss_http'] = [
     'response' => [ 'code' => $http_code ],
     'body'     => is_string( $body ) ? $body : json_encode( $body ),
+    'headers'  => array_change_key_case( $headers, CASE_LOWER ),
   ];
 }
 function assert_true( bool $cond, string $msg ): void {
@@ -110,5 +116,49 @@ $client->request( 'POST', '/cost', [ 'body' => [], 'shop_headers' => true ] );
 assert_true( isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'shop headers on /cost' );
 $client->request( 'GET', '/geolocation/counties' );
 assert_true( ! isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'no shop headers elsewhere' );
+
+// 8) get_counties hits the counties endpoint with country=RO.
+ss_set_response( 200, [ 'status' => 200, 'counties' => [ [ 'id' => 1, 'county' => 'Alba' ] ] ] );
+$r = $client->get_counties();
+$req = $GLOBALS['ovride_ss_last_request'];
+assert_true( $r['ok'] === true, 'counties: ok' );
+assert_true( strpos( $req['url'], '/geolocation/counties' ) !== false, 'counties: endpoint' );
+assert_true( strpos( $req['url'], 'country=RO' ) !== false, 'counties: country param' );
+
+// 9) get_cities hits cities with the county id.
+ss_set_response( 200, [ 'status' => 200, 'cities' => [ [ 'id' => 251695, 'city' => 'Abrud' ] ] ] );
+$client->get_cities( 7 );
+assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], 'county=7' ) !== false, 'cities: county id' );
+
+// 10) cost sends shop headers; create_awb does not.
+ss_set_response( 200, [ 'status' => 200, 'costs' => [] ] );
+$client->cost( [ 'recipient' => [], 'sender' => [], 'content' => [] ] );
+assert_true( isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'cost: shop headers' );
+ss_set_response( 200, [ 'status' => 200, 'awb' => 'AWB1' ] );
+$client->create_awb( [ 'recipient' => [], 'sender' => [], 'content' => [], 'courier_id' => 2 ] );
+assert_true( ! isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'create_awb: no shop headers' );
+
+// 11) get_awb_status / cancel_awb rawurlencode the awb in the path.
+ss_set_response( 200, [ 'status' => 200, 'history' => [] ] );
+$client->get_awb_status( 'A B/2' );
+assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/status/A%20B%2F2' ) !== false, 'status: rawurlencoded' );
+
+// 12) print_awb returns the PDF on a %PDF body...
+ss_set_response( 200, '%PDF-1.4 ...binary...', [ 'Content-Type' => 'application/pdf' ] );
+$p = $client->print_awb( 'AWB1', 'A6' );
+assert_true( $p['ok'] === true, 'print: ok on pdf' );
+assert_true( isset( $p['pdf'] ) && strncmp( $p['pdf'], '%PDF', 4 ) === 0, 'print: pdf bytes' );
+assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/print/AWB1/A6' ) !== false, 'print: url+format' );
+
+// 13) ...and the error tuple on a JSON (in-body status) body.
+ss_set_response( 200, [ 'status' => 999, 'message' => 'bad' ], [ 'Content-Type' => 'application/json' ] );
+$p = $client->print_awb( 'AWB1' );
+assert_true( $p['ok'] === false, 'print: ok false on json' );
+assert_same( 'validation', $p['code'], 'print: maps 999' );
+
+// 14) print_awb rejects a bad format (defaults to A4).
+ss_set_response( 200, '%PDF-1.4', [ 'Content-Type' => 'application/pdf' ] );
+$client->print_awb( 'AWB1', 'A5' );
+assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/print/AWB1/A4' ) !== false, 'print: bad format -> A4' );
 
 echo "smoke-smartship-client: all assertions passed\n";

@@ -40,6 +40,75 @@ final class SmartShipClient {
     return $this->request( 'GET', '/account/senders' );
   }
 
+  public function get_counties(): array {
+    return $this->cached( 'counties', 12 * HOUR_IN_SECONDS, function () {
+      return $this->request( 'GET', '/geolocation/counties', [ 'query' => [ 'country' => 'RO' ] ] );
+    } );
+  }
+
+  public function get_cities( int $county_id ): array {
+    return $this->cached( 'cities_' . $county_id, 12 * HOUR_IN_SECONDS, function () use ( $county_id ) {
+      return $this->request( 'GET', '/geolocation/cities', [ 'query' => [ 'county' => $county_id ] ] );
+    } );
+  }
+
+  public function get_senders(): array {
+    return $this->cached( 'senders', 5 * 60, function () {
+      return $this->request( 'GET', '/account/senders' );
+    } );
+  }
+
+  public function cost( array $body ): array {
+    return $this->request( 'POST', '/cost', [ 'body' => $body, 'shop_headers' => true ] );
+  }
+
+  public function create_awb( array $body ): array {
+    return $this->request( 'POST', '/awb/new', [ 'body' => $body ] );
+  }
+
+  public function get_awb_status( string $awb ): array {
+    return $this->request( 'GET', '/awb/status/' . rawurlencode( $awb ) );
+  }
+
+  public function cancel_awb( string $awb ): array {
+    return $this->request( 'GET', '/awb/cancel/' . rawurlencode( $awb ) );
+  }
+
+  public function print_awb( string $awb, string $format = 'A4' ): array {
+    $format = in_array( $format, [ 'A4', 'A6' ], true ) ? $format : 'A4';
+    $url      = $this->base_url . '/awb/print/' . rawurlencode( $awb ) . '/' . $format;
+    $response = wp_remote_get( $url, [ 'timeout' => self::TIMEOUT, 'headers' => $this->headers( false ) ] );
+    if ( is_wp_error( $response ) ) {
+      return $this->error( 0, 'transport_error', $response->get_error_message() );
+    }
+    $http  = (int) wp_remote_retrieve_response_code( $response );
+    $body  = (string) wp_remote_retrieve_body( $response );
+    $ctype = (string) wp_remote_retrieve_header( $response, 'content-type' );
+    if ( strpos( $ctype, 'application/pdf' ) !== false || strncmp( $body, '%PDF', 4 ) === 0 ) {
+      return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [], 'pdf' => $body, 'content_type' => 'application/pdf' ];
+    }
+    $json = json_decode( $body, true );
+    if ( is_array( $json ) ) {
+      $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
+      return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+    }
+    return $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'ovride-smartship' ) );
+  }
+
+  /** Cache a successful tuple under an API-key-fingerprinted transient. */
+  private function cached( string $key, int $ttl, callable $fetch ): array {
+    $tk  = 'ovride_ss_' . substr( md5( $this->api_key ), 0, 12 ) . '_' . $key;
+    $hit = get_transient( $tk );
+    if ( is_array( $hit ) ) {
+      return $hit;
+    }
+    $res = $fetch();
+    if ( ! empty( $res['ok'] ) ) {
+      set_transient( $tk, $res, $ttl );
+    }
+    return $res;
+  }
+
   /**
    * @param string $method 'GET' | 'POST'.
    * @param string $path   Leading-slash path, e.g. '/geolocation/counties'.
