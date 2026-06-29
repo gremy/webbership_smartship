@@ -68,7 +68,14 @@ final class CityResolver {
     }
     $is_bucuresti = ( 'bucuresti' === $target );
     $wanted       = self::normalize_city( $city_name, $is_bucuresti );
-    $city_id      = null;
+
+    // In Bucuresti only a sector is a valid destination. Refuse to match a bare
+    // "Bucuresti" even if SmartShip returns a literal city row by that name.
+    if ( $is_bucuresti && 'bucuresti' === $wanted ) {
+      return [ 'county_id' => $county_id, 'city_id' => null, 'confident' => false ];
+    }
+
+    $city_id = null;
     foreach ( (array) ( $cities['cities'] ?? [] ) as $ct ) {
       if ( isset( $ct['city'] ) && self::normalize_city( (string) $ct['city'], $is_bucuresti ) === $wanted ) {
         $city_id = (int) $ct['id'];

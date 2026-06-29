@@ -17,7 +17,7 @@ class FakeClient {
   public function get_cities( int $county_id ): array {
     $map = [
       38 => [ [ 'id' => 263804, 'city' => 'Sacalaz' ], [ 'id' => 263852, 'city' => 'Timisoara' ] ],
-      10 => [ [ 'id' => 900001, 'city' => 'Sectorul 1' ], [ 'id' => 900004, 'city' => 'Sectorul 4' ] ],
+      10 => [ [ 'id' => 900000, 'city' => 'Bucuresti' ], [ 'id' => 900001, 'city' => 'Sectorul 1' ], [ 'id' => 900004, 'city' => 'Sectorul 4' ] ],
     ];
     return [ 'ok' => true, 'status' => 200, 'cities' => $map[ $county_id ] ?? [] ];
   }
@@ -50,9 +50,12 @@ $out = $r->resolve( 'B', 'Sector 4' );
 assert_same( 10, $out['county_id'], 'bucuresti county' );
 assert_same( 900004, $out['city_id'], 'sector 4 city' );
 
-// Bucharest bare "Bucuresti" (no sector) -> county resolved, not confident on city.
+// Bucharest bare "Bucuresti" (no sector) -> county resolved, but NEVER a confident
+// city match even when SmartShip returns a literal "Bucuresti" row: only a sector
+// is a valid Bucharest destination.
 $out = $r->resolve( 'B', 'Bucuresti' );
 assert_same( 10, $out['county_id'], 'bucuresti county 2' );
+assert_true( $out['city_id'] === null, 'bare bucuresti -> city_id null' );
 assert_true( $out['confident'] === false, 'bare bucuresti -> not confident' );
 
 // unknown county code -> nothing resolved.
