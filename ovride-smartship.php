@@ -27,6 +27,7 @@ require_once OVRIDE_SMARTSHIP_DIR . 'includes/class-module.php';
 require_once OVRIDE_SMARTSHIP_DIR . 'includes/class-dependencies.php';
 require_once OVRIDE_SMARTSHIP_DIR . 'includes/class-i18n.php';
 require_once OVRIDE_SMARTSHIP_DIR . 'includes/class-plugin.php';
+require_once OVRIDE_SMARTSHIP_DIR . 'includes/Settings/class-settings.php';
 
 register_activation_hook( __FILE__, [ 'Ovride\\Smartship\\Plugin', 'activate' ] );
 register_deactivation_hook( __FILE__, [ 'Ovride\\Smartship\\Plugin', 'deactivate' ] );

@@ -32,7 +32,7 @@ final class Plugin {
       return; // Nothing else loads without WooCommerce.
     }
 
-    // Settings registration is added in Task 2.
+    ( new \Ovride\Smartship\Settings\Settings() )->register_hooks();
 
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
