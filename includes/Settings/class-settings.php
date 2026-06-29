@@ -46,7 +46,7 @@ final class Settings {
   }
 
   public static function defaults(): array {
-    return [ 'api_key' => '', 'debug' => 'no' ];
+    return [ 'api_key' => '', 'debug' => 'no', 'sender_id' => 0, 'iban' => '' ];
   }
 
   public static function get(): array {
@@ -59,6 +59,14 @@ final class Settings {
       return (string) constant( self::KEY_CONSTANT );
     }
     return trim( (string) self::get()['api_key'] );
+  }
+
+  public static function sender_id(): int {
+    return (int) self::get()['sender_id'];
+  }
+
+  public static function iban(): string {
+    return (string) self::get()['iban'];
   }
 
   public static function key_is_constant(): bool {
@@ -97,10 +105,14 @@ final class Settings {
       $api_key = (string) $current['api_key'];
     }
 
-    return [
+    $out = [
       'api_key' => $api_key,
       'debug'   => ( isset( $input['debug'] ) && 'yes' === $input['debug'] ) ? 'yes' : 'no',
     ];
+    $out['sender_id'] = isset( $input['sender_id'] ) ? absint( $input['sender_id'] ) : (int) $current['sender_id'];
+    $out['iban']      = isset( $input['iban'] ) ? strtoupper( preg_replace( '/\s+/', '', sanitize_text_field( (string) $input['iban'] ) ) ) : (string) $current['iban'];
+
+    return $out;
   }
 
   public function render_page(): void {
@@ -150,6 +162,33 @@ final class Settings {
                   <?php echo esc_html__( 'The stored key is hidden. Leave blank to keep the current key.', 'ovride-smartship' ); ?>
                 </p>
               <?php endif; ?>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><label for="ovride_smartship_sender"><?php echo esc_html__( 'Default sender', 'ovride-smartship' ); ?></label></th>
+            <td>
+              <?php
+              $current_sender = self::sender_id();
+              $senders        = self::api_key() !== '' ? ( new \Ovride\Smartship\Api\SmartShipClient( self::api_key() ) )->get_senders() : [ 'ok' => false ];
+              if ( ! empty( $senders['ok'] ) && ! empty( $senders['senders'] ) ) :
+                ?>
+                <select name="<?php echo esc_attr( self::OPTION ); ?>[sender_id]" id="ovride_smartship_sender">
+                  <?php foreach ( (array) $senders['senders'] as $snd ) :
+                    $sid = (int) ( $snd['id'] ?? 0 );
+                    $lbl = trim( ( $snd['nume'] ?? '' ) . ' — ' . ( $snd['localitate'] ?? '' ), ' —' );
+                    ?>
+                    <option value="<?php echo esc_attr( (string) $sid ); ?>" <?php selected( $current_sender, $sid ); ?>><?php echo esc_html( $lbl ); ?></option>
+                  <?php endforeach; ?>
+                </select>
+              <?php else : ?>
+                <p class="description"><?php echo esc_html__( 'Save a valid API key first, then reload to choose a sender.', 'ovride-smartship' ); ?></p>
+              <?php endif; ?>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><label for="ovride_smartship_iban"><?php echo esc_html__( 'IBAN (for cash-on-delivery)', 'ovride-smartship' ); ?></label></th>
+            <td>
+              <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="ovride_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" />
             </td>
           </tr>
           <tr>
