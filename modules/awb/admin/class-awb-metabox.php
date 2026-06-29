@@ -9,6 +9,7 @@ use Ovride\Smartship\Api\SmartShipClient;
 use Ovride\Smartship\Support\CityResolver;
 use Ovride\Smartship\Settings\Settings;
 use Ovride\Smartship\Modules\Awb\Data\AwbPayload;
+use Ovride\Smartship\Modules\Awb\Admin\AwbPrint;
 
 /**
  * @package Ovride\Smartship\Modules\Awb\Admin
@@ -23,6 +24,8 @@ final class AwbMetabox {
     add_action( 'wp_ajax_ovride_smartship_estimate', [ $this, 'ajax_estimate' ] );
     add_action( 'wp_ajax_ovride_smartship_issue', [ $this, 'ajax_issue' ] );
     add_action( 'wp_ajax_ovride_smartship_cities', [ $this, 'ajax_cities' ] );
+    add_action( 'wp_ajax_ovride_smartship_status', [ $this, 'ajax_status' ] );
+    add_action( 'wp_ajax_ovride_smartship_cancel', [ $this, 'ajax_cancel' ] );
   }
 
   public function add_box(): void {
@@ -104,6 +107,32 @@ final class AwbMetabox {
     ) ] );
   }
 
+  public function ajax_status(): void {
+    check_ajax_referer( self::NONCE );
+    if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'ovride-smartship' ) ], 403 ); }
+    $order = $this->order_from_request();
+    if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'ovride-smartship' ) ], 404 ); }
+    $awb = (string) $order->get_meta( '_ovride_smartship_awb' );
+    $res = ( new SmartShipClient( Settings::api_key() ) )->get_awb_status( $awb );
+    if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Status unavailable.', 'ovride-smartship' ) ] ); }
+    wp_send_json_success( $res );
+  }
+
+  public function ajax_cancel(): void {
+    check_ajax_referer( self::NONCE );
+    if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'ovride-smartship' ) ], 403 ); }
+    $order = $this->order_from_request();
+    if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'ovride-smartship' ) ], 404 ); }
+    $awb = (string) $order->get_meta( '_ovride_smartship_awb' );
+    $res = ( new SmartShipClient( Settings::api_key() ) )->cancel_awb( $awb );
+    if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Cancel failed.', 'ovride-smartship' ) ] ); }
+    $order->delete_meta_data( '_ovride_smartship_awb' );
+    $order->delete_meta_data( '_ovride_smartship_courier' );
+    $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip AWB %s cancelled.', 'ovride-smartship' ), $awb ) );
+    $order->save();
+    wp_send_json_success();
+  }
+
   /** county/city: posted dropdown values win (both required); else the resolver. */
   private function resolve_for( $order ): array {
     $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
@@ -130,8 +159,12 @@ final class AwbMetabox {
     $awb = $order->get_meta( '_ovride_smartship_awb' );
     echo '<div class="ovride-ss-awb" data-order="' . esc_attr( (string) $order->get_id() ) . '">';
     if ( $awb ) {
-      // issued state (Task 6 adds tracking/print/cancel controls here)
       echo '<p><strong>' . esc_html__( 'AWB:', 'ovride-smartship' ) . '</strong> ' . esc_html( (string) $awb ) . '</p>';
+      echo '<p><a class="button" target="_blank" href="' . esc_url( AwbPrint::url( (int) $order->get_id(), 'A4' ) ) . '">' . esc_html__( 'Print A4', 'ovride-smartship' ) . '</a> ';
+      echo '<a class="button" target="_blank" href="' . esc_url( AwbPrint::url( (int) $order->get_id(), 'A6' ) ) . '">' . esc_html__( 'Print A6', 'ovride-smartship' ) . '</a></p>';
+      echo '<p><button type="button" class="button ovride-ss-track">' . esc_html__( 'Refresh tracking', 'ovride-smartship' ) . '</button> ';
+      echo '<button type="button" class="button ovride-ss-cancel">' . esc_html__( 'Cancel AWB', 'ovride-smartship' ) . '</button></p>';
+      echo '<div class="ovride-ss-tracking"></div>';
     } else {
       echo '<button type="button" class="button ovride-ss-estimate">' . esc_html__( 'Estimate', 'ovride-smartship' ) . '</button>';
       echo '<div class="ovride-ss-couriers"></div>';

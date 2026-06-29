@@ -96,4 +96,15 @@
       window.location.reload();
     } );
   } );
+
+  $( document ).on( 'click', '.ovride-ss-cancel', function () {
+    if ( ! window.confirm( 'Cancel this AWB?' ) ) { return; }
+    $.post( OvrideSmartShip.ajax, { action: 'ovride_smartship_cancel', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId() } )
+      .done( function ( r ) { if ( r.success ) { window.location.reload(); } else { alert( r.data && r.data.message ); } } );
+  } );
+  $( document ).on( 'click', '.ovride-ss-track', function () {
+    var $t = $( '.ovride-ss-tracking' ).text( 'Loading…' );
+    $.post( OvrideSmartShip.ajax, { action: 'ovride_smartship_status', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId() } )
+      .done( function ( r ) { $t.text( r.success ? JSON.stringify( r.data.history || r.data ) : ( r.data && r.data.message ) ); } );
+  } );
 } )( jQuery );
