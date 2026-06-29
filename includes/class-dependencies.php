@@ -14,4 +14,8 @@ final class Dependencies {
   public static function woocommerce_active(): bool {
     return class_exists( 'WooCommerce' );
   }
+
+  public static function smartship_configured(): bool {
+    return \Ovride\Smartship\Settings\Settings::api_key() !== '';
+  }
 }
