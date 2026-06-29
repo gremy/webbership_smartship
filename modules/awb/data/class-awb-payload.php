@@ -14,6 +14,10 @@ use Ovride\Smartship\Settings\Settings;
  */
 final class AwbPayload {
 
+  /**
+   * Caller must gate on $resolved['confident'] before building: a resolution miss
+   * yields city => 0, which SmartShip rejects.
+   */
   public static function recipient_from_order( $order, array $resolved ): array {
     $name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
     if ( '' === $name ) {

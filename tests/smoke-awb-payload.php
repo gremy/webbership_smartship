@@ -71,5 +71,15 @@ namespace {
   assert_same( 0.0, $c3['cash_on_delivery'], 'COD 0 when paid+card' );
   assert_same( 2.0, $c3['weight'], 'weight from items' );
 
+  // content: paid + cod still ships COD (exercises the `|| 'cod' === payment_method` branch).
+  $o4 = new FakeOrder( [ 'num' => '7', 'total' => '80', 'paid' => true, 'pay' => 'cod', 'items' => [ new FakeItem( new FakeProduct( '1' ) ) ] ] );
+  $c4 = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o4 );
+  assert_same( 80.0, $c4['cash_on_delivery'], 'COD from total when paid+cod' );
+
+  // content: empty product weight contributes 0; 0.3 < 1.0 floors to 1kg.
+  $o5 = new FakeOrder( [ 'num' => '5', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '' ) ), new FakeItem( new FakeProduct( '0.3' ) ) ] ] );
+  $c5 = Ovride\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o5 );
+  assert_same( 1.0, $c5['weight'], 'missing weight contributes 0, floors to 1kg' );
+
   echo "smoke-awb-payload: all assertions passed\n";
 }
