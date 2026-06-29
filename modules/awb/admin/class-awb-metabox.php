@@ -99,7 +99,7 @@ final class AwbMetabox {
     $res       = ( new SmartShipClient( Settings::api_key() ) )->get_cities( $county_id );
     if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Could not load cities.', 'ovride-smartship' ) ] ); }
     wp_send_json_success( [ 'cities' => array_map(
-      fn( $c ) => [ 'id' => (int) ( $c['id'] ?? 0 ), 'city' => (string) ( $c['city'] ?? '' ) ],
+      fn( $c ) => [ 'id' => (int) ( $c['id'] ?? 0 ), 'city' => sanitize_text_field( (string) ( $c['city'] ?? '' ) ) ],
       (array) ( $res['cities'] ?? [] )
     ) ] );
   }

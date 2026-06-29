@@ -54,7 +54,15 @@
     } );
     // Remember the county so the chosen city is paired with it.
     $wrap.data( 'county', resolved.county_id );
+    // A picker is shown → the current dropdown selection always wins, even if
+    // the merchant clicks Issue without re-estimating. Seed the county now and
+    // keep city_id in sync on every change.
+    override = { county_id: resolved.county_id, city_id: parseInt( $sel.val(), 10 ) || 0 };
   }
+
+  $( document ).on( 'change', '.ovride-ss-city', function () {
+    override.city_id = parseInt( $( this ).val(), 10 ) || 0;
+  } );
 
   $( document ).on( 'click', '.ovride-ss-estimate', function () {
     override = { county_id: 0, city_id: 0 };
@@ -72,6 +80,10 @@
   $( document ).on( 'click', '.ovride-ss-issue', function () {
     var courier = $( 'input[name=ss_courier]:checked' ).val();
     if ( ! courier ) { $( '.ovride-ss-msg' ).text( 'Pick a courier.' ); return; }
+    // A city picker shown but no city chosen → don't issue with an unresolved address.
+    if ( $( '.ovride-ss-city' ).length && ! override.city_id ) {
+      $( '.ovride-ss-msg' ).text( 'Select the destination city first.' ); return;
+    }
     $( '.ovride-ss-msg' ).text( 'Issuing…' );
     var data = { action: 'ovride_smartship_issue', _ajax_nonce: OvrideSmartShip.nonce, order_id: orderId(), courier_id: courier };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
