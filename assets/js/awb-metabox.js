@@ -40,6 +40,10 @@
     $wrap.empty();
     $wrap.append( $( '<p/>' ).text( "Couldn't match the city — pick it:" ) );
     var $sel = $( '<select class="ovride-ss-city"/>' );
+    // Placeholder so no real city is pre-selected: the merchant must pick the
+    // correct one explicitly (auto-selecting the first city could be wrong), and
+    // override.city_id stays 0 until a real choice fires `change`.
+    $sel.append( $( '<option/>' ).val( '' ).prop( 'disabled', true ).prop( 'selected', true ).text( '— Select city —' ) );
     $wrap.append( $sel );
     $wrap.append( $( '<button type="button" class="button ovride-ss-reestimate">' ).text( 'Re-estimate' ) );
     $.post( OvrideSmartShip.ajax, {
