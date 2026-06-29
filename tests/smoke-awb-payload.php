@@ -30,6 +30,8 @@ namespace {
     public function get_billing_last_name() { return $this->d['b_last'] ?? ''; }
     public function get_shipping_address_1() { return $this->d['s_addr'] ?? ''; }
     public function get_billing_address_1() { return $this->d['b_addr'] ?? ''; }
+    public function get_shipping_address_2() { return $this->d['s_addr2'] ?? ''; }
+    public function get_billing_address_2() { return $this->d['b_addr2'] ?? ''; }
     public function get_billing_email() { return $this->d['email'] ?? ''; }
     public function get_shipping_phone() { return $this->d['s_phone'] ?? ''; }
     public function get_billing_phone() { return $this->d['b_phone'] ?? ''; }
@@ -57,6 +59,11 @@ namespace {
   assert_same( '0720000000', $rec['phone'], 'phone fallback to billing' );
   assert_same( 263852, $rec['city'], 'recipient city id' );
   assert_same( 'RO', $rec['country'], 'recipient country' );
+
+  // recipient: address_2 joined to address_1 from the same (shipping) source.
+  $oa = new FakeOrder( [ 's_addr' => 'Str. A 1', 's_addr2' => 'Bl. 2 Ap. 3' ] );
+  $reca = Ovride\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $oa, [ 'city_id' => 1 ] );
+  assert_same( 'Str. A 1 Bl. 2 Ap. 3', $reca['address'], 'recipient address joins address_1 + address_2' );
 
   // content: weight floor 1kg, COD from total when unpaid, package_content from order number.
   $o2 = new FakeOrder( [ 'num' => '1234', 'total' => '149.99', 'paid' => false, 'items' => [ new FakeItem( new FakeProduct( '0.2' ) ) ] ] );

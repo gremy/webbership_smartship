@@ -12,6 +12,7 @@ function wp_parse_args( $a, $d ) { return array_merge( $d, is_array( $a ) ? $a :
 function __( $t, $d = 'default' ) { return $t; }
 function absint( $v ) { return abs( (int) $v ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
+function add_settings_error( $setting, $code, $message, $type = 'error' ) {}
 
 function assert_true( bool $cond, string $msg ): void {
   if ( ! $cond ) { throw new RuntimeException( $msg ); }
@@ -56,5 +57,15 @@ assert_same( 'RO49AAAA1B31007593840000', $out['iban'], 'iban trimmed' );
 $GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'sender_id' => 8848, 'iban' => 'RO49AAAA1B31007593840000' ];
 assert_same( 8848, Settings::sender_id(), 'sender_id accessor' );
 assert_same( 'RO49AAAA1B31007593840000', Settings::iban(), 'iban accessor' );
+
+// IBAN validation: a valid RO IBAN is kept; an invalid one keeps the previously-stored value.
+$GLOBALS['ovride_options'][ Settings::OPTION ] = [ 'api_key' => 'K', 'iban' => 'RO11BBBB1B31007593840000' ];
+$out = $s->sanitize( [ 'api_key' => '', 'iban' => 'RO49AAAA1B31007593840000' ] );
+assert_same( 'RO49AAAA1B31007593840000', $out['iban'], 'valid IBAN kept' );
+$out = $s->sanitize( [ 'api_key' => '', 'iban' => 'RO123' ] );
+assert_same( 'RO11BBBB1B31007593840000', $out['iban'], 'invalid IBAN keeps previous value' );
+// A blank IBAN clears.
+$out = $s->sanitize( [ 'api_key' => '', 'iban' => '' ] );
+assert_same( '', $out['iban'], 'blank IBAN clears' );
 
 echo "smoke-settings: all assertions passed\n";

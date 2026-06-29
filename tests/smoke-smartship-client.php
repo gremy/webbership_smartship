@@ -156,6 +156,11 @@ $p = $client->print_awb( 'AWB1' );
 assert_true( $p['ok'] === false, 'print: ok false on json' );
 assert_same( 'validation', $p['code'], 'print: maps 999' );
 
+// 13b) print_awb requires the %PDF magic: a pdf content-type header over a non-%PDF body is NOT a PDF.
+ss_set_response( 200, [ 'status' => 999 ], [ 'Content-Type' => 'application/pdf' ] );
+$p = $client->print_awb( 'AWB1' );
+assert_true( $p['ok'] === false, 'print: ok false when content-type pdf but body is not %PDF' );
+
 // 14) print_awb rejects a bad format (defaults to A4).
 ss_set_response( 200, '%PDF-1.4', [ 'Content-Type' => 'application/pdf' ] );
 $client->print_awb( 'AWB1', 'A5' );

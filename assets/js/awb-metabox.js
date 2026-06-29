@@ -11,6 +11,13 @@
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
     $.post( OvrideSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : 'Failed' ); return; }
+      // No city resolved yet: show the picker, withhold couriers/Issue until re-estimate.
+      if ( r.data.needs_city ) {
+        $( '.ovride-ss-couriers' ).empty();
+        maybeRenderCityPicker( r.data.resolved );
+        $msg.text( 'Pick the destination city, then Re-estimate.' );
+        return;
+      }
       $msg.text( '' );
       renderCouriers( r.data.costs || [] );
       maybeRenderCityPicker( r.data.resolved );

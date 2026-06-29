@@ -23,7 +23,12 @@ final class AwbPayload {
     if ( '' === $name ) {
       $name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
     }
-    $address = $order->get_shipping_address_1() ?: $order->get_billing_address_1();
+    // Both address lines must come from the SAME source: mixing a shipping line 1
+    // with a billing line 2 would build a nonsensical address.
+    $use_shipping = (string) $order->get_shipping_address_1() !== '';
+    $addr1   = $use_shipping ? $order->get_shipping_address_1() : $order->get_billing_address_1();
+    $addr2   = $use_shipping ? $order->get_shipping_address_2() : $order->get_billing_address_2();
+    $address = trim( $addr1 . ( $addr2 !== '' ? ' ' . $addr2 : '' ) );
     $phone   = $order->get_shipping_phone() ?: $order->get_billing_phone();
     return [
       'name'    => $name,

@@ -110,7 +110,15 @@ final class Settings {
       'debug'   => ( isset( $input['debug'] ) && 'yes' === $input['debug'] ) ? 'yes' : 'no',
     ];
     $out['sender_id'] = isset( $input['sender_id'] ) ? absint( $input['sender_id'] ) : (int) $current['sender_id'];
-    $out['iban']      = isset( $input['iban'] ) ? strtoupper( preg_replace( '/\s+/', '', sanitize_text_field( (string) $input['iban'] ) ) ) : (string) $current['iban'];
+
+    // Blank clears; a non-empty IBAN must look like RO + 22 chars, else keep the
+    // stored one and flag it — never persist garbage that /awb/new would reject.
+    $iban = isset( $input['iban'] ) ? strtoupper( preg_replace( '/\s+/', '', sanitize_text_field( (string) $input['iban'] ) ) ) : (string) $current['iban'];
+    if ( '' !== $iban && ! preg_match( '/^RO[0-9A-Z]{22}$/', $iban ) ) {
+      add_settings_error( self::OPTION, 'iban', __( 'IBAN looks invalid — expected RO + 22 characters.', 'ovride-smartship' ) );
+      $iban = (string) $current['iban'];
+    }
+    $out['iban'] = $iban;
 
     return $out;
   }

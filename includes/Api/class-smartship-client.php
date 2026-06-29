@@ -107,10 +107,11 @@ final class SmartShipClient {
     if ( is_wp_error( $response ) ) {
       return $this->error( 0, 'transport_error', $response->get_error_message() );
     }
-    $http  = (int) wp_remote_retrieve_response_code( $response );
-    $body  = (string) wp_remote_retrieve_body( $response );
-    $ctype = (string) wp_remote_retrieve_header( $response, 'content-type' );
-    if ( strpos( $ctype, 'application/pdf' ) !== false || strncmp( $body, '%PDF', 4 ) === 0 ) {
+    $http = (int) wp_remote_retrieve_response_code( $response );
+    $body = (string) wp_remote_retrieve_body( $response );
+    // The %PDF magic is the only proof of a PDF; content-type is metadata SmartShip
+    // also sets on its JSON error bodies, so it can't gate success.
+    if ( strncmp( $body, '%PDF', 4 ) === 0 ) {
       return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [], 'pdf' => $body, 'content_type' => 'application/pdf' ];
     }
     $json = json_decode( $body, true );

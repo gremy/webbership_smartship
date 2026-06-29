@@ -58,6 +58,11 @@ final class AwbMetabox {
 
     $client   = new SmartShipClient( Settings::api_key() );
     $resolved = $this->resolve_for( $order );
+    // No city id (resolver not confident, no override posted) → /cost with city:0
+    // would just fail. Return needs_city so the JS renders the city picker instead.
+    if ( empty( $resolved['city_id'] ) ) {
+      wp_send_json_success( [ 'costs' => [], 'resolved' => $resolved, 'needs_city' => true ] );
+    }
     $sender   = $this->chosen_sender( $client );
     $payload  = [
       'recipient' => AwbPayload::recipient_from_order( $order, $resolved ),
@@ -77,9 +82,12 @@ final class AwbMetabox {
     $courier_id = isset( $_POST['courier_id'] ) ? absint( $_POST['courier_id'] ) : 0;
     if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'ovride-smartship' ) ] ); }
 
+    $resolved = $this->resolve_for( $order );
+    if ( empty( $resolved['city_id'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'ovride-smartship' ) ] ); }
+
     $client  = new SmartShipClient( Settings::api_key() );
     $sender  = $this->chosen_sender( $client );
-    $payload = AwbPayload::build( $order, $this->resolve_for( $order ), $sender, $courier_id );
+    $payload = AwbPayload::build( $order, $resolved, $sender, $courier_id );
     $res     = $client->create_awb( $payload );
     if ( empty( $res['ok'] ) ) {
       wp_send_json_error( [ 'message' => $res['message'] ?: __( 'AWB issue failed.', 'ovride-smartship' ), 'errors' => $res['errors'] ?? [], 'code' => $res['code'] ?? '' ] );
@@ -163,7 +171,10 @@ final class AwbMetabox {
     $awb = $order->get_meta( '_ovride_smartship_awb' );
     echo '<div class="ovride-ss-awb" data-order="' . esc_attr( (string) $order->get_id() ) . '">';
     if ( $awb ) {
-      echo '<p><strong>' . esc_html__( 'AWB:', 'ovride-smartship' ) . '</strong> ' . esc_html( (string) $awb ) . '</p>';
+      $courier = (string) $order->get_meta( '_ovride_smartship_courier' );
+      echo '<p><strong>' . esc_html__( 'AWB:', 'ovride-smartship' ) . '</strong> ' . esc_html( (string) $awb );
+      if ( '' !== $courier ) { echo ' (' . esc_html( $courier ) . ')'; }
+      echo '</p>';
       echo '<p><a class="button" target="_blank" href="' . esc_url( AwbPrint::url( (int) $order->get_id(), 'A4' ) ) . '">' . esc_html__( 'Print A4', 'ovride-smartship' ) . '</a> ';
       echo '<a class="button" target="_blank" href="' . esc_url( AwbPrint::url( (int) $order->get_id(), 'A6' ) ) . '">' . esc_html__( 'Print A6', 'ovride-smartship' ) . '</a></p>';
       echo '<p><button type="button" class="button ovride-ss-track">' . esc_html__( 'Refresh tracking', 'ovride-smartship' ) . '</button> ';
