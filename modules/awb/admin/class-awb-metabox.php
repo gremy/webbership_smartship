@@ -22,6 +22,7 @@ final class AwbMetabox {
     add_action( 'admin_enqueue_scripts', [ $this, 'enqueue' ] );
     add_action( 'wp_ajax_ovride_smartship_estimate', [ $this, 'ajax_estimate' ] );
     add_action( 'wp_ajax_ovride_smartship_issue', [ $this, 'ajax_issue' ] );
+    add_action( 'wp_ajax_ovride_smartship_cities', [ $this, 'ajax_cities' ] );
   }
 
   public function add_box(): void {
@@ -80,19 +81,35 @@ final class AwbMetabox {
     if ( empty( $res['ok'] ) ) {
       wp_send_json_error( [ 'message' => $res['message'] ?: __( 'AWB issue failed.', 'ovride-smartship' ), 'errors' => $res['errors'] ?? [], 'code' => $res['code'] ?? '' ] );
     }
-    $awb = sanitize_text_field( (string) ( $res['awb'] ?? '' ) );
+    $awb          = sanitize_text_field( (string) ( $res['awb'] ?? '' ) );
+    $courier_name = sanitize_text_field( (string) ( $res['courier_name'] ?? '' ) );
     $order->update_meta_data( '_ovride_smartship_awb', $awb );
-    $order->update_meta_data( '_ovride_smartship_courier', sanitize_text_field( (string) ( $res['courier_name'] ?? '' ) ) );
+    $order->update_meta_data( '_ovride_smartship_courier', $courier_name );
     $order->update_meta_data( '_ovride_smartship_cost', sanitize_text_field( (string) ( $res['cost'] ?? '' ) ) );
-    $order->add_order_note( sprintf( /* translators: 1: AWB number, 2: courier */ __( 'SmartShip AWB %1$s issued (%2$s).', 'ovride-smartship' ), $awb, (string) ( $res['courier_name'] ?? '' ) ) );
+    $order->add_order_note( sprintf( /* translators: 1: AWB number, 2: courier */ __( 'SmartShip AWB %1$s issued (%2$s).', 'ovride-smartship' ), $awb, $courier_name ) );
     $order->save();
     wp_send_json_success( [ 'awb' => $awb ] );
   }
 
-  /** county/city: posted dropdown values win; else the resolver. */
+  /** Cities for a resolved county, so the merchant can pick the right one. */
+  public function ajax_cities(): void {
+    check_ajax_referer( self::NONCE );
+    if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'ovride-smartship' ) ], 403 ); }
+    $county_id = absint( $_POST['county_id'] ?? 0 );
+    $res       = ( new SmartShipClient( Settings::api_key() ) )->get_cities( $county_id );
+    if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Could not load cities.', 'ovride-smartship' ) ] ); }
+    wp_send_json_success( [ 'cities' => array_map(
+      fn( $c ) => [ 'id' => (int) ( $c['id'] ?? 0 ), 'city' => (string) ( $c['city'] ?? '' ) ],
+      (array) ( $res['cities'] ?? [] )
+    ) ] );
+  }
+
+  /** county/city: posted dropdown values win (both required); else the resolver. */
   private function resolve_for( $order ): array {
-    if ( isset( $_POST['county_id'], $_POST['city_id'] ) && absint( $_POST['city_id'] ) ) {
-      return [ 'county_id' => absint( $_POST['county_id'] ), 'city_id' => absint( $_POST['city_id'] ), 'confident' => true ];
+    $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
+    $city   = isset( $_POST['city_id'] ) ? absint( $_POST['city_id'] ) : 0;
+    if ( $county && $city ) {
+      return [ 'county_id' => $county, 'city_id' => $city, 'confident' => true ];
     }
     $resolver = new CityResolver( new SmartShipClient( Settings::api_key() ) );
     return $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ) );
