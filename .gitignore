@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+/vendor/
+/node_modules/
+*.mo~
+.idea/
+.vscode/
