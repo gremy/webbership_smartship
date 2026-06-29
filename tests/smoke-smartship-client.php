@@ -168,4 +168,12 @@ $c = $client->cancel_awb( 'AWB1' );
 assert_true( $c['ok'] === true, 'cancel: ok on empty 200' );
 assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/cancel/AWB1' ) !== false, 'cancel: url' );
 
+// 16) cancel_awb with a JSON body keeps the strict integer-200 success rule.
+ss_set_response( 200, [ 'status' => '200abc' ] );
+$c = $client->cancel_awb( 'AWB1' );
+assert_true( $c['ok'] === false, 'cancel: non-int status "200abc" is not success' );
+ss_set_response( 200, [ 'status' => 999, 'message' => 'no' ] );
+$c = $client->cancel_awb( 'AWB1' );
+assert_true( $c['ok'] === false, 'cancel: body status 999 -> ok false' );
+
 echo "smoke-smartship-client: all assertions passed\n";

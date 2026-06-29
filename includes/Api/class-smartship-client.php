@@ -91,7 +91,8 @@ final class SmartShipClient {
     $json = json_decode( $body, true );
     if ( is_array( $json ) ) {
       $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
-      if ( 200 === $st ) {
+      // Strict success (matches request()): the body status must be the integer 200.
+      if ( isset( $json['status'] ) && is_int( $json['status'] ) && 200 === $json['status'] ) {
         return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
       }
       return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
