@@ -161,4 +161,11 @@ ss_set_response( 200, '%PDF-1.4', [ 'Content-Type' => 'application/pdf' ] );
 $client->print_awb( 'AWB1', 'A5' );
 assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/print/AWB1/A4' ) !== false, 'print: bad format -> A4' );
 
+// 15) cancel_awb treats an empty 200 body as a (best-effort) success.
+// SmartShip's /awb/cancel returns an empty 200 and does not actually cancel.
+ss_set_response( 200, '' );
+$c = $client->cancel_awb( 'AWB1' );
+assert_true( $c['ok'] === true, 'cancel: ok on empty 200' );
+assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], '/awb/cancel/AWB1' ) !== false, 'cancel: url' );
+
 echo "smoke-smartship-client: all assertions passed\n";

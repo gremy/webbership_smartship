@@ -126,13 +126,15 @@ final class AwbMetabox {
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'ovride-smartship' ) ], 404 ); }
     $awb = (string) $order->get_meta( '_ovride_smartship_awb' );
     if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'No AWB on this order.', 'ovride-smartship' ) ], 400 ); }
-    $res = ( new SmartShipClient( Settings::api_key() ) )->cancel_awb( $awb );
-    if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Cancel failed.', 'ovride-smartship' ) ] ); }
+    // SmartShip's /awb/cancel doesn't actually cancel the shipment, so this is
+    // best-effort: ignore its result and always clear the AWB locally.
+    ( new SmartShipClient( Settings::api_key() ) )->cancel_awb( $awb );
     $order->delete_meta_data( '_ovride_smartship_awb' );
     $order->delete_meta_data( '_ovride_smartship_courier' );
-    $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip AWB %s cancelled.', 'ovride-smartship' ), $awb ) );
+    $order->delete_meta_data( '_ovride_smartship_cost' );
+    $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip AWB %s removed from this order. If it was already sent to the courier, cancel it in the SmartShip dashboard too.', 'ovride-smartship' ), $awb ) );
     $order->save();
-    wp_send_json_success();
+    wp_send_json_success( [ 'message' => __( 'AWB removed. Cancel it in the SmartShip dashboard if it was already submitted.', 'ovride-smartship' ) ] );
   }
 
   /** county/city: posted dropdown values win (both required); else the resolver. */

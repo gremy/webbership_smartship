@@ -70,8 +70,33 @@ final class SmartShipClient {
     return $this->request( 'GET', '/awb/status/' . rawurlencode( $awb ) );
   }
 
+  /**
+   * SmartShip's /awb/cancel returns an EMPTY 200 body on a successful request and
+   * does NOT actually cancel the shipment (verified live; their own PrestaShop
+   * module clears the AWB locally and never relies on this call). We treat a 2xx
+   * with an empty body as a best-effort success; the caller still clears locally.
+   */
   public function cancel_awb( string $awb ): array {
-    return $this->request( 'GET', '/awb/cancel/' . rawurlencode( $awb ) );
+    $url      = $this->base_url . '/awb/cancel/' . rawurlencode( $awb );
+    $response = wp_remote_get( $url, [ 'timeout' => self::TIMEOUT, 'headers' => $this->headers( false ) ] );
+    if ( is_wp_error( $response ) ) {
+      return $this->error( 0, 'transport_error', $response->get_error_message() );
+    }
+    $http = (int) wp_remote_retrieve_response_code( $response );
+    $body = trim( (string) wp_remote_retrieve_body( $response ) );
+    // /awb/cancel returns an empty 200 on a successful request (no JSON body).
+    if ( $http >= 200 && $http < 300 && '' === $body ) {
+      return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+    }
+    $json = json_decode( $body, true );
+    if ( is_array( $json ) ) {
+      $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
+      if ( 200 === $st ) {
+        return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+      }
+      return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+    }
+    return $this->error( $http, 'cancel_failed', __( 'SmartShip did not confirm the cancellation.', 'ovride-smartship' ) );
   }
 
   public function print_awb( string $awb, string $format = 'A4' ): array {
