@@ -35,7 +35,8 @@ assert_true( abs( $r[0]['cost'] - 22.0 ) < 0.001, 'percent markup 10%' );
 
 // markup edge cases.
 assert_true( abs( RateCalculator::apply_markup( 10.0, [] ) - 10.0 ) < 0.001, 'no markup' );
-assert_true( abs( RateCalculator::apply_markup( 10.0, [ 'markup_type' => 'flat', 'markup_amount' => -50 ] ) - 0.0 ) < 0.001, 'negative guarded to 0' );
+assert_true( abs( RateCalculator::apply_markup( 10.0, [ 'markup_type' => 'flat', 'markup_amount' => -50 ] ) - 0.0 ) < 0.001, 'flat negative guarded to 0' );
+assert_true( abs( RateCalculator::apply_markup( 10.0, [ 'markup_type' => 'percent', 'markup_amount' => -200 ] ) - 0.0 ) < 0.001, 'percent negative guarded to 0' );
 
 // a courier with no id is skipped.
 $r = RateCalculator::build_rates( [ [ 'courier_name' => 'x', 'cost' => 1 ], [ 'courier_id' => 2, 'courier_name' => 'SameDay', 'cost' => 9 ] ], [] );
