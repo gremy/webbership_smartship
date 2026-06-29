@@ -31,10 +31,23 @@ final class Logger {
     return ( '' !== $key ) ? str_replace( $key, '***', $text ) : $text;
   }
 
+  /** Recursively redact the API key from every string in the context array. */
+  private static function redact_context( array $context ): array {
+    foreach ( $context as $k => $v ) {
+      if ( is_string( $v ) ) {
+        $context[ $k ] = self::redact( $v );
+      } elseif ( is_array( $v ) ) {
+        $context[ $k ] = self::redact_context( $v );
+      }
+    }
+    return $context;
+  }
+
   private static function log( string $level, string $message, array $context ): void {
     if ( ! function_exists( 'wc_get_logger' ) ) {
       return;
     }
-    wc_get_logger()->log( $level, self::redact( $message ), array_merge( [ 'source' => self::SOURCE ], $context ) );
+    $context = self::redact_context( array_merge( [ 'source' => self::SOURCE ], $context ) );
+    wc_get_logger()->log( $level, self::redact( $message ), $context );
   }
 }

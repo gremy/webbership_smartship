@@ -73,8 +73,11 @@ final class SmartShipClient {
       return $this->error( $http, 'invalid_json', __( 'Unexpected response from SmartShip.', 'ovride-smartship' ) );
     }
 
+    // Success requires a STRICT integer 200 in the body — a non-integer like
+    // "200abc" coerces to (int) 200 but must NOT count as success.
     $app_status = isset( $body['status'] ) ? (int) $body['status'] : 0;
-    if ( 200 !== $app_status ) {
+    $is_success = isset( $body['status'] ) && is_int( $body['status'] ) && 200 === $body['status'];
+    if ( ! $is_success ) {
       return [
         'ok'      => false,
         'status'  => $app_status,

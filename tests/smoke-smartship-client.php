@@ -89,6 +89,11 @@ $r = $client->request( 'GET', '/geolocation/counties' );
 assert_true( false === $r['ok'], 'invalid_json: ok false' );
 assert_same( 'invalid_json', $r['code'], 'invalid_json: code' );
 
+// 5b) HTTP 200 + non-integer body status "200abc" -> ok false (must not coerce to 200).
+ss_set_response( 200, [ 'status' => '200abc', 'message' => 'garbage' ] );
+$r = $client->request( 'POST', '/cost', [ 'body' => [] ] );
+assert_true( false === $r['ok'], 'non-int status: ok false on "200abc"' );
+
 // 6) validate_credentials hits /account/senders; key in header, NEVER in the URL; timeout bounded.
 ss_set_response( 200, [ 'status' => 200, 'senders' => [] ] );
 $r   = $client->validate_credentials();
