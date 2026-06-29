@@ -34,6 +34,9 @@ final class Plugin {
 
     ( new \Ovride\Smartship\Settings\Settings() )->register_hooks();
 
+    require_once OVRIDE_SMARTSHIP_DIR . 'modules/awb/class-awb-module.php';
+    $this->modules[] = new \Ovride\Smartship\Modules\Awb\AwbModule();
+
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
         $module->register_hooks();
