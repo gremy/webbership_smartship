@@ -37,6 +37,9 @@ final class Plugin {
     require_once OVRIDE_SMARTSHIP_DIR . 'modules/awb/class-awb-module.php';
     $this->modules[] = new \Ovride\Smartship\Modules\Awb\AwbModule();
 
+    require_once OVRIDE_SMARTSHIP_DIR . 'modules/checkout-rates/class-checkout-rates-module.php';
+    $this->modules[] = new \Ovride\Smartship\Modules\CheckoutRates\CheckoutRatesModule();
+
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
         $module->register_hooks();
