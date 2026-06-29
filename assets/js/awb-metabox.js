@@ -73,6 +73,10 @@
 
   $( document ).on( 'change', '.ovride-ss-city', function () {
     override.city_id = parseInt( $( this ).val(), 10 ) || 0;
+    // City changed → the prior estimate's couriers (and Issue button) are stale for
+    // the new destination; clear them so the merchant must Re-estimate before issuing.
+    $( '.ovride-ss-couriers' ).empty();
+    $( '.ovride-ss-msg' ).text( override.city_id ? 'City changed — click Re-estimate.' : '' );
   } );
 
   $( document ).on( 'click', '.ovride-ss-estimate', function () {
