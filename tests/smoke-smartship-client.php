@@ -134,6 +134,10 @@ assert_true( strpos( $GLOBALS['ovride_ss_last_request']['url'], 'county=7' ) !==
 ss_set_response( 200, [ 'status' => 200, 'costs' => [] ] );
 $client->cost( [ 'recipient' => [], 'sender' => [], 'content' => [] ] );
 assert_true( isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'cost: shop headers' );
+// cost() honors a custom timeout (RATE_TIMEOUT at checkout).
+ss_set_response( 200, [ 'status' => 200, 'costs' => [] ] );
+$client->cost( [ 'recipient' => [], 'sender' => [], 'content' => [] ], 3 );
+assert_same( 3, $GLOBALS['ovride_ss_last_request']['args']['timeout'], 'cost: custom timeout' );
 ss_set_response( 200, [ 'status' => 200, 'awb' => 'AWB1' ] );
 $client->create_awb( [ 'recipient' => [], 'sender' => [], 'content' => [], 'courier_id' => 2 ] );
 assert_true( ! isset( $GLOBALS['ovride_ss_last_request']['args']['headers']['X-Shop-Url'] ), 'create_awb: no shop headers' );

@@ -58,8 +58,8 @@ final class SmartShipClient {
     } );
   }
 
-  public function cost( array $body ): array {
-    return $this->request( 'POST', '/cost', [ 'body' => $body, 'shop_headers' => true ] );
+  public function cost( array $body, int $timeout = self::TIMEOUT ): array {
+    return $this->request( 'POST', '/cost', [ 'body' => $body, 'shop_headers' => true, 'timeout' => $timeout ] );
   }
 
   public function create_awb( array $body ): array {
