@@ -113,6 +113,7 @@ final class AwbMetabox {
     $order = $this->order_from_request();
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'ovride-smartship' ) ], 404 ); }
     $awb = (string) $order->get_meta( '_ovride_smartship_awb' );
+    if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'No AWB on this order.', 'ovride-smartship' ) ], 400 ); }
     $res = ( new SmartShipClient( Settings::api_key() ) )->get_awb_status( $awb );
     if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Status unavailable.', 'ovride-smartship' ) ] ); }
     wp_send_json_success( $res );
@@ -124,6 +125,7 @@ final class AwbMetabox {
     $order = $this->order_from_request();
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'ovride-smartship' ) ], 404 ); }
     $awb = (string) $order->get_meta( '_ovride_smartship_awb' );
+    if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'No AWB on this order.', 'ovride-smartship' ) ], 400 ); }
     $res = ( new SmartShipClient( Settings::api_key() ) )->cancel_awb( $awb );
     if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Cancel failed.', 'ovride-smartship' ) ] ); }
     $order->delete_meta_data( '_ovride_smartship_awb' );

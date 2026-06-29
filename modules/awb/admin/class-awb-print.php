@@ -40,6 +40,9 @@ final class AwbPrint {
     if ( empty( $res['ok'] ) || empty( $res['pdf'] ) ) {
       wp_die( esc_html( $res['message'] ?: __( 'Could not fetch the label.', 'ovride-smartship' ) ) );
     }
+    if ( strncmp( (string) $res['pdf'], '%PDF', 4 ) !== 0 ) {
+      wp_die( esc_html( $res['message'] ?: __( 'SmartShip did not return a valid PDF.', 'ovride-smartship' ) ) );
+    }
     nocache_headers();
     header( 'Content-Type: application/pdf' );
     header( 'Content-Disposition: inline; filename="AWB-' . sanitize_file_name( $awb ) . '.pdf"' );
