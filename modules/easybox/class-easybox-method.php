@@ -68,9 +68,19 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     ];
   }
 
-  /** Read the instance settings into the EasyBoxPricing config shape. */
+  /**
+   * Read the instance settings into the EasyBoxPricing config shape.
+   * Reads each field via get_option() (like the live-rates method) rather than the
+   * raw $this->instance_settings property — the latter only happens to be populated
+   * via an init() side effect, so a refactor could silently revert to all-defaults.
+   */
   public function config(): array {
-    return EasyBoxPricing::config( $this->instance_settings );
+    return EasyBoxPricing::config( [
+      'title'           => $this->get_option( 'title' ),
+      'easybox_factor'  => $this->get_option( 'easybox_factor' ),
+      'fallback_amount' => $this->get_option( 'fallback_amount' ),
+      'fallback_title'  => $this->get_option( 'fallback_title' ),
+    ] );
   }
 
   public function calculate_shipping( $package = [] ): void {
