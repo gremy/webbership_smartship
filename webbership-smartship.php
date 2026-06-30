@@ -30,6 +30,7 @@ require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/class-plugin.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Settings/class-settings.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Api/class-smartship-client.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Support/class-city-resolver.php';
+require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Support/class-cost-service.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/class-logger.php';
 
 register_activation_hook( __FILE__, [ 'Webbership\\Smartship\\Plugin', 'activate' ] );

@@ -4,9 +4,8 @@ declare(strict_types=1);
 namespace Webbership\Smartship\Modules\CheckoutRates;
 
 use Webbership\Smartship\Api\SmartShipClient;
-use Webbership\Smartship\Support\CityResolver;
+use Webbership\Smartship\Support\CostService;
 use Webbership\Smartship\Settings\Settings;
-use Webbership\Smartship\Modules\Awb\Data\AwbPayload;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -141,21 +140,8 @@ final class ShippingMethod extends \WC_Shipping_Method {
       $this->add_fallback( $config );
       return;
     }
-    $client   = new SmartShipClient( $api_key );
-    $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ) );
-    if ( empty( $resolved['city_id'] ) ) {
-      $this->add_fallback( $config );
-      return;
-    }
-
-    $sender = $this->sender_block( $client );
-    if ( empty( $sender ) ) {
-      $this->add_fallback( $config );
-      return;
-    }
-
-    $weight = (int) ceil( max( 1.0, $this->package_weight( $package ) ) );
-    $costs  = $this->fetch_costs( $client, (int) $resolved['city_id'], $weight, (string) ( $dest['address'] ?? '' ), $sender );
+    $client = new SmartShipClient( $api_key );
+    $costs  = CostService::costs_for( $package, $client );
     if ( null === $costs ) {
       $this->add_fallback( $config );
       return;
@@ -179,74 +165,5 @@ final class ShippingMethod extends \WC_Shipping_Method {
   private function add_fallback( array $config ): void {
     $f = RateCalculator::fallback_rate( $config );
     $this->add_rate( [ 'id' => $f['id'], 'label' => $f['label'], 'cost' => $f['cost'] ] );
-  }
-
-  /** Cached /cost costs[] for (city, weight); null on failure (and sets a brief failure-cache). */
-  private function fetch_costs( SmartShipClient $client, int $city_id, int $weight, string $address, array $sender ) {
-    $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight );
-    $cached = get_transient( $key );
-    if ( is_array( $cached ) ) {
-      return $cached;
-    }
-    if ( get_transient( 'webbership_ss_rate_fail' ) ) {
-      return null;
-    }
-    $body = [
-      'recipient' => [ 'name' => 'Estimate', 'address' => $address, 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => '0' ],
-      'sender'    => $sender,
-      'content'   => [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ],
-    ];
-    $res = $client->cost( $body, SmartShipClient::RATE_TIMEOUT );
-    if ( empty( $res['ok'] ) ) {
-      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
-      return null;
-    }
-    $costs = $res['costs'] ?? ( $res['response']['costs'] ?? [] );
-    // A malformed ok-response (costs not an array) must fall back, not fatal build_rates(array).
-    if ( ! is_array( $costs ) ) {
-      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
-      return null;
-    }
-    set_transient( $key, $costs, 10 * MINUTE_IN_SECONDS );
-    return $costs;
-  }
-
-  /** Sender block from the configured sender, cached a day to stay off the checkout hot path. */
-  private function sender_block( SmartShipClient $client ): array {
-    $id = Settings::sender_id();
-    if ( $id <= 0 ) {
-      return [];
-    }
-    $tk    = 'webbership_ss_sender_block_' . $id;
-    $block = get_transient( $tk );
-    if ( is_array( $block ) ) {
-      return $block;
-    }
-    $res = $client->get_senders( SmartShipClient::RATE_TIMEOUT );
-    foreach ( (array) ( $res['senders'] ?? [] ) as $s ) {
-      if ( (int) ( $s['id'] ?? 0 ) === $id ) {
-        $block = AwbPayload::sender_from_account( $s );
-        // A usable sender block needs at least a name and a (nonzero int) city id;
-        // an incomplete one would make /cost fail anyway, so reject (and don't cache) it.
-        if ( empty( $block['name'] ) || empty( $block['city'] ) ) {
-          return [];
-        }
-        set_transient( $tk, $block, DAY_IN_SECONDS );
-        return $block;
-      }
-    }
-    return [];
-  }
-
-  private function package_weight( array $package ): float {
-    $weight = 0.0;
-    foreach ( (array) ( $package['contents'] ?? [] ) as $item ) {
-      $product = isset( $item['data'] ) && is_object( $item['data'] ) ? $item['data'] : null;
-      $qty     = (int) ( $item['quantity'] ?? 1 );
-      if ( $product && method_exists( $product, 'get_weight' ) && '' !== (string) $product->get_weight() ) {
-        $weight += (float) $product->get_weight() * max( 1, $qty );
-      }
-    }
-    return $weight;
   }
 }
