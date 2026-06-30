@@ -118,4 +118,31 @@
     $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_status', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() } )
       .done( function ( r ) { $t.text( r.success ? JSON.stringify( r.data.history || r.data ) : ( r.data && r.data.message ) ); } );
   } );
+
+  // EasyBox hand-off: copy the recipient block for the SmartShip form.
+  $( document ).on( 'click', '.webbership-ss-easybox-copy', function () {
+    var $b  = $( this );
+    var txt = $b.data( 'recipient' );
+    var ok  = function () { var t = $b.text(); $b.text( 'Copied!' ); setTimeout( function () { $b.text( t ); }, 1500 ); };
+    if ( navigator.clipboard && navigator.clipboard.writeText ) {
+      navigator.clipboard.writeText( txt ).then( ok, ok );
+    } else {
+      var $ta = $( '<textarea/>' ).val( txt ).appendTo( 'body' ).select();
+      try { document.execCommand( 'copy' ); } catch ( e ) {}
+      $ta.remove();
+      ok();
+    }
+  } );
+
+  // EasyBox hand-off: paste the manually-created AWB back onto the order.
+  $( document ).on( 'click', '.webbership-ss-easybox-save', function () {
+    var awb = $.trim( $( '.webbership-ss-easybox-awb' ).val() );
+    if ( ! awb ) { $( '.webbership-ss-msg' ).text( 'Enter the AWB number.' ); return; }
+    $( '.webbership-ss-msg' ).text( 'Saving…' );
+    $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_set_awb', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId(), awb: awb } )
+      .done( function ( r ) {
+        if ( r.success ) { window.location.reload(); return; }
+        $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : 'Failed' );
+      } );
+  } );
 } )( jQuery );

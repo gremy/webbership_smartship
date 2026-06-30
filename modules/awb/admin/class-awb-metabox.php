@@ -26,6 +26,7 @@ final class AwbMetabox {
     add_action( 'wp_ajax_webbership_smartship_cities', [ $this, 'ajax_cities' ] );
     add_action( 'wp_ajax_webbership_smartship_status', [ $this, 'ajax_status' ] );
     add_action( 'wp_ajax_webbership_smartship_cancel', [ $this, 'ajax_cancel' ] );
+    add_action( 'wp_ajax_webbership_smartship_set_awb', [ $this, 'ajax_set_awb' ] );
   }
 
   public function add_box(): void {
@@ -145,6 +146,26 @@ final class AwbMetabox {
     wp_send_json_success( [ 'message' => __( 'AWB removed. Cancel it in the SmartShip dashboard if it was already submitted.', 'webbership-smartship' ) ] );
   }
 
+  /**
+   * Paste-back: store an AWB the merchant created by hand in smartship.ro (the
+   * EasyBox locker hand-off — SmartShip's V2 API can't issue locker AWBs yet).
+   * Mutates the order, so it requires the metabox nonce + edit capability.
+   */
+  public function ajax_set_awb(): void {
+    check_ajax_referer( self::NONCE );
+    if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'webbership-smartship' ) ], 403 ); }
+    $order = $this->order_from_request();
+    if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'webbership-smartship' ) ], 404 ); }
+    $awb = sanitize_text_field( (string) ( $_POST['awb'] ?? '' ) );
+    if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'Enter the AWB number.', 'webbership-smartship' ) ] ); }
+    $courier = __( 'SameDay EasyBox', 'webbership-smartship' );
+    $order->update_meta_data( '_webbership_smartship_awb', $awb );
+    $order->update_meta_data( '_webbership_smartship_courier', $courier );
+    $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip EasyBox AWB %s added manually.', 'webbership-smartship' ), $awb ) );
+    $order->save();
+    wp_send_json_success( [ 'awb' => $awb ] );
+  }
+
   /** county/city: posted dropdown values win (both required); else the resolver. */
   private function resolve_for( $order ): array {
     $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
@@ -181,6 +202,8 @@ final class AwbMetabox {
       echo '<button type="button" class="button webbership-ss-cancel">' . esc_html__( 'Cancel AWB', 'webbership-smartship' ) . '</button></p>';
       echo '<p class="description">' . esc_html__( 'Cancel removes the AWB from this order. If it was already handed to the courier, cancel it in the SmartShip dashboard too.', 'webbership-smartship' ) . '</p>';
       echo '<div class="webbership-ss-tracking"></div>';
+    } elseif ( '' !== (string) $order->get_meta( '_webbership_smartship_easybox_id' ) ) {
+      $this->render_easybox_handoff( $order );
     } else {
       echo '<p class="description">' . esc_html__( 'Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip.', 'webbership-smartship' ) . '</p>';
       echo '<button type="button" class="button webbership-ss-estimate">' . esc_html__( 'Estimate', 'webbership-smartship' ) . '</button>';
@@ -188,5 +211,40 @@ final class AwbMetabox {
       echo '<div class="webbership-ss-msg"></div>';
     }
     echo '</div>';
+  }
+
+  /**
+   * EasyBox locker hand-off: SmartShip's V2 API can't issue locker AWBs, so the
+   * merchant creates it by hand in smartship.ro and pastes the number back here.
+   * Shows the chosen locker + the order recipient (to fill the SmartShip form),
+   * a link out, a copy-recipient helper, and the paste-back field.
+   */
+  private function render_easybox_handoff( $order ): void {
+    $name    = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
+    if ( '' === $name ) { $name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ); }
+    $phone   = (string) ( $order->get_shipping_phone() ?: $order->get_billing_phone() );
+    $addr1   = (string) $order->get_shipping_address_1() !== '' ? $order->get_shipping_address_1() : $order->get_billing_address_1();
+    $addr2   = (string) $order->get_shipping_address_1() !== '' ? $order->get_shipping_address_2() : $order->get_billing_address_2();
+    $city    = (string) ( $order->get_shipping_city() ?: $order->get_billing_city() );
+    $address = trim( $addr1 . ( '' !== (string) $addr2 ? ', ' . $addr2 : '' ) );
+
+    // One block the merchant copies into the SmartShip form; also the recipient view.
+    $recipient = implode( "\n", array_filter( [ $name, $phone, $address, $city ] ) );
+
+    echo '<p><strong>' . esc_html__( 'EasyBox locker', 'webbership-smartship' ) . '</strong></p>';
+    echo '<p>' . esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_name' ) ) . '<br/>';
+    echo esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_address' ) ) . '<br/>';
+    echo esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_city' ) ) . '</p>';
+
+    echo '<p><strong>' . esc_html__( 'Recipient', 'webbership-smartship' ) . '</strong></p>';
+    echo '<pre class="webbership-ss-recipient">' . esc_html( $recipient ) . '</pre>';
+    echo '<p><button type="button" class="button webbership-ss-easybox-copy" data-recipient="' . esc_attr( $recipient ) . '">' . esc_html__( 'Copy recipient', 'webbership-smartship' ) . '</button></p>';
+
+    echo '<p class="description">' . esc_html__( 'Create the locker AWB in SmartShip, then paste the number back here to enable printing and tracking.', 'webbership-smartship' ) . '</p>';
+    echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://smartship.ro/trimitere-noua' ) . '">' . esc_html__( 'Create EasyBox AWB in SmartShip ↗', 'webbership-smartship' ) . '</a></p>';
+
+    echo '<p><input type="text" class="webbership-ss-easybox-awb" placeholder="' . esc_attr__( 'Paste AWB number', 'webbership-smartship' ) . '" /> ';
+    echo '<button type="button" class="button webbership-ss-easybox-save">' . esc_html__( 'Save AWB', 'webbership-smartship' ) . '</button></p>';
+    echo '<div class="webbership-ss-msg"></div>';
   }
 }
