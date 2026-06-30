@@ -31,10 +31,10 @@ final class EasyBoxPricing {
     $pct    = ( '' !== $raw && is_numeric( $raw ) ) ? (float) $raw : self::DEFAULT_FACTOR * 100;
     $factor = max( 0.10, min( 3.00, $pct / 100 ) );
     return [
-      'title'          => sanitize_text_field( (string) ( $instance['title'] ?? __( 'EasyBox locker', 'webbership-smartship' ) ) ),
+      'title'          => sanitize_text_field( (string) ( $instance['title'] ?? __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ) ) ),
       'factor'         => $factor,
       'fallback'       => max( 0.0, (float) ( $instance['fallback_amount'] ?? 0 ) ),
-      'fallback_title' => sanitize_text_field( (string) ( $instance['fallback_title'] ?? __( 'EasyBox locker', 'webbership-smartship' ) ) ),
+      'fallback_title' => sanitize_text_field( (string) ( $instance['fallback_title'] ?? __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ) ) ),
     ];
   }
 

@@ -30,7 +30,7 @@ same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => 'abc' ] )['factor'], '
 same( 0.10, EasyBoxPricing::config( [ 'easybox_factor' => '0' ] )['factor'], 'explicit 0 clamps to floor' );
 
 // title: default + sanitize (trim)
-same( 'EasyBox locker', EasyBoxPricing::config( [] )['title'], 'title default' );
+same( 'Ridicare Sameday Point / EasyBox', EasyBoxPricing::config( [] )['title'], 'title default' );
 same( 'Pickup', EasyBoxPricing::config( [ 'title' => '  Pickup  ' ] )['title'], 'title trimmed' );
 
 // negative fallback amount floored at 0

@@ -22,7 +22,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
   public function __construct( $instance_id = 0 ) {
     $this->id                 = EasyBoxPricing::METHOD_ID;
     $this->instance_id        = absint( $instance_id );
-    $this->method_title       = __( 'EasyBox locker (SameDay)', 'webbership-smartship' );
+    $this->method_title       = __( 'Ridicare Sameday Point / EasyBox (SameDay)', 'webbership-smartship' );
     $this->method_description = __( 'Locker delivery, priced from the live SameDay rate. Customers choose their locker on a map at checkout.', 'webbership-smartship' );
     $this->supports           = [ 'shipping-zones', 'instance-settings', 'instance-settings-modal' ];
     $this->init();
@@ -31,7 +31,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
   public function init(): void {
     $this->init_form_fields();
     $this->init_settings();
-    $this->title   = $this->get_option( 'title', __( 'EasyBox locker', 'webbership-smartship' ) );
+    $this->title   = $this->get_option( 'title', __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ) );
     $this->enabled = $this->get_option( 'enabled', 'yes' );
     add_action( 'woocommerce_update_options_shipping_' . $this->id, [ $this, 'process_admin_options' ] );
   }
@@ -41,7 +41,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
       'title' => [
         'title'       => __( 'Method title', 'webbership-smartship' ),
         'type'        => 'text',
-        'default'     => __( 'EasyBox locker', 'webbership-smartship' ),
+        'default'     => __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ),
         'description' => __( 'Label shown to the customer at checkout.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
@@ -62,7 +62,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
       'fallback_title' => [
         'title'       => __( 'Fallback label', 'webbership-smartship' ),
         'type'        => 'text',
-        'default'     => __( 'EasyBox locker', 'webbership-smartship' ),
+        'default'     => __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ),
         'description' => __( 'Label shown to the customer for the fallback flat rate.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
