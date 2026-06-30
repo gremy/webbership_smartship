@@ -1,0 +1,168 @@
+/**
+ * EasyBox checkout locker picker.
+ *
+ * Theme-native: inherits the store's fonts/colors. Minimal own palette — only a
+ * subtle selected/hover accent (currentColor-based) so it doesn't impose a brand.
+ * Fixed-height map to avoid layout shift; ≥44px list rows; responsive stack.
+ */
+
+.webbership-ss-easybox {
+  margin: 0.75em 0;
+  font-size: 0.95em;
+}
+
+.webbership-ss-easybox[hidden] {
+  display: none;
+}
+
+/* States ------------------------------------------------------------------ */
+
+.webbership-ss-state {
+  padding: 1em;
+  text-align: center;
+}
+
+.webbership-ss-error p {
+  margin: 0 0 0.5em;
+}
+
+.webbership-ss-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: webbership-ss-spin 0.7s linear infinite;
+}
+
+@keyframes webbership-ss-spin {
+  to { transform: rotate( 360deg ); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .webbership-ss-spinner { animation-duration: 1.5s; }
+}
+
+/* Search ------------------------------------------------------------------ */
+
+.webbership-ss-search-label {
+  display: block;
+  margin-bottom: 0.25em;
+  font-weight: 600;
+}
+
+.webbership-ss-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+}
+
+.webbership-ss-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect( 0, 0, 0, 0 );
+  white-space: nowrap;
+}
+
+/* Layout: map + list side by side, stacking on narrow screens -------------- */
+
+.webbership-ss-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  align-items: stretch;
+}
+
+.webbership-ss-map {
+  flex: 1 1 320px;
+  height: 320px;
+  border: 1px solid rgba( 0, 0, 0, 0.15 );
+  border-radius: 4px;
+  /* Leaflet panes must sit above the theme but below modals/dropdowns. */
+  z-index: 0;
+}
+
+.webbership-ss-list {
+  flex: 1 1 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid rgba( 0, 0, 0, 0.15 );
+  border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+  .webbership-ss-layout { flex-direction: column; }
+  .webbership-ss-map { flex-basis: auto; height: 240px; }
+  .webbership-ss-list { flex-basis: auto; max-height: 280px; }
+}
+
+/* List rows --------------------------------------------------------------- */
+
+.webbership-ss-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+  min-height: 44px;
+  padding: 0.5em 0.6em;
+  cursor: pointer;
+  border-bottom: 1px solid rgba( 0, 0, 0, 0.08 );
+}
+
+.webbership-ss-row:last-child {
+  border-bottom: 0;
+}
+
+.webbership-ss-row:hover,
+.webbership-ss-row:focus {
+  background: rgba( 0, 0, 0, 0.05 );
+  outline: none;
+}
+
+.webbership-ss-row:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.webbership-ss-row.is-selected {
+  background: rgba( 0, 0, 0, 0.08 );
+  font-weight: 600;
+}
+
+/* Checkmark: hidden until selected — selected state is check + weight + bg,
+   never color alone. */
+.webbership-ss-check {
+  flex: 0 0 auto;
+  width: 1.1em;
+  visibility: hidden;
+  font-weight: 700;
+}
+
+.webbership-ss-row.is-selected .webbership-ss-check {
+  visibility: visible;
+}
+
+.webbership-ss-row-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.webbership-ss-row-addr,
+.webbership-ss-row-city {
+  font-weight: 400;
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+.webbership-ss-empty {
+  padding: 1em 0.6em;
+  text-align: center;
+  opacity: 0.85;
+}
