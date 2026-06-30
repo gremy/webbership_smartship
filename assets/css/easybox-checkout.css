@@ -1,13 +1,29 @@
 /**
  * EasyBox checkout locker picker.
  *
- * Theme-native: inherits the store's fonts and OVRIDE brand tokens (--ovride-*),
- * with graceful hex fallbacks if those vars are absent. Green selected/preview
- * accents, a confirmation chip, a search affordance, and a map↔list that stay in
- * sync. Fixed-height map to avoid layout shift; ≥44px list rows; responsive stack.
+ * Self-contained and theme-agnostic: the picker ships its own design tokens
+ * (--wss-*) with tasteful defaults, so it looks good on any WooCommerce theme
+ * out of the box. A host theme can rebrand it by overriding those few variables
+ * on .webbership-ss-easybox — it must not need to touch these rules. Inherits the
+ * store's fonts. Green selected/preview accents, a confirmation chip, a search
+ * affordance, and a map↔list that stay in sync. Fixed-height map to avoid layout
+ * shift; ≥44px list rows; responsive stack.
  */
 
 .webbership-ss-easybox {
+  /* Theme override surface: remap any of these on .webbership-ss-easybox to
+     rebrand the picker without overriding individual rules. */
+  --wss-accent: #2a7a6e;          /* primary accent: icon, focus ring, check */
+  --wss-accent-strong: #1f5f56;   /* stronger accent: city tag */
+  --wss-accent-deep: #153f39;     /* deepest accent: confirmation text */
+  --wss-soft: #edf5f2;            /* tint bg: hover / preview */
+  --wss-selected: rgba( 42, 122, 110, 0.12 );  /* committed-row bg */
+  --wss-ring: rgba( 42, 122, 110, 0.35 );       /* preview inset ring */
+  --wss-surface: #ffffff;         /* list background */
+  --wss-ink: #1a1f1e;             /* primary text */
+  --wss-muted: #5a6360;           /* secondary text (≥4.5:1 on surface) */
+  --wss-line: #dce2e0;            /* borders / dividers */
+
   margin: 0.75em 0;
   font-size: 0.95em;
 }
@@ -54,10 +70,10 @@
   gap: 0.55em;
   margin-bottom: 0.7em;
   padding: 0.55em 0.7em;
-  border: 1px solid var( --ovride-green, #2a7a6e );
+  border: 1px solid var( --wss-accent );
   border-radius: 6px;
-  background: var( --ovride-mist, #edf5f2 );
-  color: var( --ovride-green-deep, #153f39 );
+  background: var( --wss-soft );
+  color: var( --wss-accent-deep );
 }
 
 .webbership-ss-confirm[hidden] { display: none; }
@@ -70,7 +86,7 @@
   width: 1.5em;
   height: 1.5em;
   border-radius: 50%;
-  background: var( --ovride-green, #2a7a6e );
+  background: var( --wss-accent );
   color: #fff;
   font-size: 0.8em;
   font-weight: 700;
@@ -108,20 +124,20 @@
   top: 50%;
   left: 0.7em;
   transform: translateY( -50% );
-  color: var( --ovride-green, #2a7a6e );
+  color: var( --wss-accent );
   pointer-events: none;
 }
 
 .webbership-ss-search {
   width: 100%;
   box-sizing: border-box;
-  /* !important defeats the theme's higher-specificity input padding, which would
-     otherwise push the text under the magnifier icon. */
+  /* !important defeats the host theme's higher-specificity input padding, which
+     would otherwise push the text under the magnifier icon. */
   padding-left: 2.4em !important;
 }
 
 .webbership-ss-search:focus {
-  outline: 2px solid var( --ovride-green, #2a7a6e );
+  outline: 2px solid var( --wss-accent );
   outline-offset: 1px;
 }
 
@@ -150,7 +166,7 @@
 .webbership-ss-map {
   flex: 1 1 320px;
   height: 320px;
-  border: 1px solid var( --ovride-line, #dfe7e4 );
+  border: 1px solid var( --wss-line );
   border-radius: 6px;
   /* Leaflet panes must sit above the theme but below modals/dropdowns. */
   z-index: 0;
@@ -163,9 +179,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var( --ovride-line, #dfe7e4 );
+  border: 1px solid var( --wss-line );
   border-radius: 6px;
-  background: var( --ovride-surface, #fdfefd );
+  background: var( --wss-surface );
 }
 
 @media (max-width: 600px) {
@@ -183,7 +199,7 @@
   min-height: 44px;
   padding: 0.6em 0.7em;
   cursor: pointer;
-  border-bottom: 1px solid var( --ovride-line, #dfe7e4 );
+  border-bottom: 1px solid var( --wss-line );
   transition: background 0.12s ease;
 }
 
@@ -193,26 +209,26 @@
 
 .webbership-ss-row:hover,
 .webbership-ss-row:focus {
-  background: var( --ovride-mist, #edf5f2 );
+  background: var( --wss-soft );
   outline: none;
 }
 
 .webbership-ss-row:focus-visible {
-  outline: 2px solid var( --ovride-green, #2a7a6e );
+  outline: 2px solid var( --wss-accent );
   outline-offset: -2px;
 }
 
 /* Pin preview: a full inset ring (never a side stripe) so it reads distinct
    from the committed selection below. */
 .webbership-ss-row.is-focused {
-  background: var( --ovride-mist, #edf5f2 );
-  box-shadow: inset 0 0 0 2px rgba( 42, 122, 110, 0.35 );
+  background: var( --wss-soft );
+  box-shadow: inset 0 0 0 2px var( --wss-ring );
 }
 
-/* Committed selection: stronger green tint + visible check + weight (never
-   color alone). */
+/* Committed selection: stronger tint + visible check + weight (never color
+   alone). */
 .webbership-ss-row.is-selected {
-  background: rgba( 42, 122, 110, 0.12 );
+  background: var( --wss-selected );
   font-weight: 600;
 }
 
@@ -220,7 +236,7 @@
   flex: 0 0 auto;
   width: 1.2em;
   visibility: hidden;
-  color: var( --ovride-green, #2a7a6e );
+  color: var( --wss-accent );
   font-weight: 700;
 }
 
@@ -236,13 +252,13 @@
 }
 
 .webbership-ss-row-text strong {
-  color: var( --ovride-ink, #111514 );
+  color: var( --wss-ink );
   font-weight: 600;
 }
 
 .webbership-ss-row-addr {
   font-size: 0.88em;
-  color: var( --ovride-muted, #66706d );
+  color: var( --wss-muted );
 }
 
 .webbership-ss-row-city {
@@ -250,21 +266,21 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var( --ovride-green-dark, #1f5f56 );
+  color: var( --wss-accent-strong );
 }
 
 .webbership-ss-empty {
   padding: 1em 0.7em;
   text-align: center;
-  color: var( --ovride-muted, #66706d );
+  color: var( --wss-muted );
 }
 
 .webbership-ss-more {
   padding: 0.55em 0.7em;
   text-align: center;
   font-size: 0.85em;
-  color: var( --ovride-muted, #66706d );
-  background: var( --ovride-mist, #edf5f2 );
+  color: var( --wss-muted );
+  background: var( --wss-soft );
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -275,10 +291,31 @@
 
 .webbership-ss-popup { line-height: 1.35; }
 .webbership-ss-popup strong { display: block; }
-.webbership-ss-popup span { display: block; font-size: 0.92em; color: var( --ovride-muted, #66706d ); }
+.webbership-ss-popup span { display: block; font-size: 0.92em; color: var( --wss-muted ); }
 
-.webbership-ss-popup-select {
+/* Self-contained CTA (scoped so it wins over the host theme's button styles
+   without depending on them). */
+.webbership-ss-easybox .webbership-ss-popup-select {
   display: block;
   width: 100%;
   margin-top: 0.55em;
+  padding: 0.5em 0.8em;
+  border: 0;
+  border-radius: 6px;
+  background: var( --wss-accent );
+  color: #fff;
+  font-size: 0.92em;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.webbership-ss-easybox .webbership-ss-popup-select:hover,
+.webbership-ss-easybox .webbership-ss-popup-select:focus {
+  background: var( --wss-accent-strong );
+}
+
+.webbership-ss-easybox .webbership-ss-popup-select:focus-visible {
+  outline: 2px solid var( --wss-accent-deep );
+  outline-offset: 2px;
 }

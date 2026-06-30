@@ -441,7 +441,7 @@
       '<strong>' + esc( l.name ) + '</strong>' +
       '<span>' + esc( l.address ) + '</span>' +
       '<span>' + esc( l.city ) + '</span>' +
-      '<button type="button" class="button webbership-ss-popup-select" data-id="' + esc( l.id ) + '">' +
+      '<button type="button" class="webbership-ss-popup-select" data-id="' + esc( l.id ) + '">' +
       esc( i18n.select || 'Select this locker' ) + '</button>' +
       '</div>';
   }
