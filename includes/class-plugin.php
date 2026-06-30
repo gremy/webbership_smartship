@@ -40,6 +40,8 @@ final class Plugin {
     require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/checkout-rates/class-checkout-rates-module.php';
     $this->modules[] = new \Webbership\Smartship\Modules\CheckoutRates\CheckoutRatesModule();
 
+    $this->modules[] = new \Webbership\Smartship\Modules\EasyBox\EasyBoxModule();
+
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
         $module->register_hooks();
