@@ -38,17 +38,19 @@ final class CostService {
     $city_id = (int) $resolved['city_id'];
     $weight  = (int) ceil( max( 1.0, self::package_weight( $package ) ) );
 
+    // Validate the sender BEFORE the caches (Phase 3 order): a missing/invalid
+    // sender must yield fallback even when the rate cache for this city is hot.
+    $sender = self::sender_block( $client );
+    if ( empty( $sender ) ) {
+      return null;
+    }
+
     $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight );
     $cached = get_transient( $key );
     if ( is_array( $cached ) ) {
       return $cached;
     }
     if ( get_transient( 'webbership_ss_rate_fail' ) ) {
-      return null;
-    }
-
-    $sender = self::sender_block( $client );
-    if ( empty( $sender ) ) {
       return null;
     }
 

@@ -34,6 +34,7 @@ if ( ! class_exists( '\\Webbership\\Smartship\\Settings\\Settings' ) ) {
  */
 class FakeCostClient {
   public int $cost_calls = 0;
+  public int $last_cost_timeout = 0;
   public $cost_result;
   public function get_counties( int $t = 0 ): array {
     return [ 'ok' => true, 'status' => 200, 'counties' => [ [ 'id' => 38, 'county' => 'Timis' ] ] ];
@@ -48,8 +49,12 @@ class FakeCostClient {
   }
   public function cost( array $body, int $t = 0 ): array {
     $this->cost_calls++;
+    $this->last_cost_timeout = $t;
     return $this->cost_result;
   }
+}
+class FakeNoSenderClient extends FakeCostClient {
+  public function get_senders( int $t = 0 ): array { return [ 'ok' => true, 'status' => 200, 'senders' => [] ]; }
 }
 
 $ro_pkg = [ 'destination' => [ 'country' => 'RO', 'state' => 'TM', 'city' => 'Sacalaz', 'address' => 'Str. Test 1' ], 'contents' => [] ];
@@ -67,6 +72,7 @@ assert_true( is_array( $out ), 'happy: returns array' );
 assert_same( 2, count( $out ), 'happy: two rows' );
 assert_same( 2, (int) $out[0]['courier_id'], 'happy: first row SameDay' );
 assert_same( 1, $client->cost_calls, 'happy: one /cost call' );
+assert_same( \Webbership\Smartship\Api\SmartShipClient::RATE_TIMEOUT, $client->last_cost_timeout, 'happy: /cost uses RATE_TIMEOUT' );
 
 // 2) Second call hits the rate cache -> client->cost() NOT called again.
 $out2 = CostService::costs_for( $ro_pkg, $client );
@@ -104,5 +110,15 @@ $client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payloa
 $unresolved = [ 'destination' => [ 'country' => 'RO', 'state' => 'TM', 'city' => 'Nowhere' ], 'contents' => [] ];
 assert_true( null === CostService::costs_for( $unresolved, $client ), 'unresolved: null' );
 assert_same( 0, $client->cost_calls, 'unresolved: no /cost call' );
+
+// 7) Invalid/missing sender -> null EVEN with a hot rate cache (sender is validated
+//    before the caches; matches Phase 3 so a removed sender always yields fallback).
+$GLOBALS['ss_store'] = [];
+$client = new FakeNoSenderClient();
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+// Pre-populate the rate cache for this city+weight (as if a prior valid estimate ran).
+set_transient( 'webbership_ss_rate_' . md5( '263804' . '|' . '1' ), $costs_payload, 600 );
+assert_true( null === CostService::costs_for( $ro_pkg, $client ), 'invalid sender: null despite hot rate cache' );
+assert_same( 0, $client->cost_calls, 'invalid sender: no /cost call' );
 
 echo "smoke-cost-service: all assertions passed\n";
