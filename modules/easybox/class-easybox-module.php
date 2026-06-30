@@ -73,6 +73,7 @@ final class EasyBoxModule extends Module {
         'selected' => __( 'Selected', 'webbership-smartship' ),
         'choose'   => __( 'Choose an EasyBox locker', 'webbership-smartship' ),
         'more'     => __( 'Type to narrow the list…', 'webbership-smartship' ),
+        'select'   => __( 'Select this locker', 'webbership-smartship' ),
       ],
     ] );
   }

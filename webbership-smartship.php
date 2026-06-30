@@ -3,7 +3,7 @@
  * Plugin Name:       Webbership SmartShip
  * Plugin URI:        https://github.com/gremy/webbership-smartship
  * Description:       SmartShip.ro courier integration for WooCommerce: live checkout rates and AWB issuance.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.4
  * Tested up to:      6.6
  * Requires PHP:      7.4
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 define( 'WEBBERSHIP_SMARTSHIP_FILE', __FILE__ );
 define( 'WEBBERSHIP_SMARTSHIP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WEBBERSHIP_SMARTSHIP_URL', plugin_dir_url( __FILE__ ) );
-define( 'WEBBERSHIP_SMARTSHIP_VERSION', '0.1.0' );
+define( 'WEBBERSHIP_SMARTSHIP_VERSION', '0.2.0' );
 
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/class-module.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/class-dependencies.php';

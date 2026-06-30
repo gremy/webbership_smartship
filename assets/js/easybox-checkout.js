@@ -27,6 +27,9 @@
   var RO_CENTER = [ 45.9432, 24.9668 ];
   var RO_ZOOM = 7;
 
+  // Inline magnifier (no emoji icons; inherits currentColor).
+  var SEARCH_ICON = '<svg class="webbership-ss-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+
   function $box() { return $( '.webbership-ss-easybox' ); }
   function $field() { return $( '#webbership_ss_locker' ); }
 
@@ -172,47 +175,80 @@
   }
 
   var LIST_MAX = 60;
+  var focusedId = null;   // locker previewed via its map pin (not yet committed)
 
   function dist2( l, c ) {
     if ( ! l.lat || ! l.lng ) { return Infinity; }
     var dx = l.lat - c[0], dy = l.lng - c[1];
     return dx * dx + dy * dy;
   }
-  // Nearest-first (squared lat/lng distance to the start center) so the capped list is useful.
+  // Sort the list/markers around what the map is currently centered on, falling
+  // back to the derived start center before the map exists.
+  function center() {
+    if ( map ) { var c = map.getCenter(); return [ c.lat, c.lng ]; }
+    return startCenter().center;
+  }
   function byDistance( items ) {
-    var c = startCenter().center;
+    var c = center();
     return items.slice().sort( function ( a, b ) { return dist2( a, c ) - dist2( b, c ); } );
   }
-  // Sync the map cluster to a subset so a search narrows map + list together.
+  // Cluster shows every search match; panning the map never hides a matched pin.
   function updateMarkers( items ) {
     if ( ! cluster ) { return; }
     cluster.clearLayers();
     items.forEach( function ( l ) { var m = markersById[ l.id ]; if ( m ) { cluster.addLayer( m ); } } );
   }
-  // Render the capped, nearest-first list AND narrow the map to the current query.
-  function showResults( q ) {
-    var matched = q ? filterLockers( q ) : lockers;
-    var sorted  = byDistance( matched );
-    renderList( sorted.slice( 0, LIST_MAX ), sorted.length );
+  function currentQuery() {
+    return ( $( '#webbership-ss-search' ).val() || '' ).trim().toLowerCase();
+  }
+  function inBounds( l ) {
+    if ( ! map || ! l.lat || ! l.lng ) { return true; }
+    return map.getBounds().contains( [ l.lat, l.lng ] );
+  }
+  // The list mirrors what the map is showing: markers reflect the search, and the
+  // list is the matched lockers inside the current viewport, nearest-center first.
+  // Pan/zoom the map → the list follows.
+  function showResults() {
+    var matched = currentQuery() ? filterLockers( currentQuery() ) : lockers;
     updateMarkers( matched );
+    var inView = byDistance( matched.filter( inBounds ) );
+    renderList( inView.slice( 0, LIST_MAX ), inView.length );
+  }
+  // Frame the map around the search matches; the resulting moveend refreshes the list.
+  function fitToMatched( matched ) {
+    if ( ! map ) { return; }
+    var pts = matched.filter( function ( l ) { return l.lat && l.lng; } )
+                     .map( function ( l ) { return [ l.lat, l.lng ]; } );
+    if ( pts.length === 1 ) { map.setView( pts[ 0 ], Math.max( map.getZoom(), 13 ) ); }
+    else if ( pts.length ) { map.fitBounds( pts, { maxZoom: 14, padding: [ 24, 24 ] } ); }
+  }
+  function applySearch() {
+    var q = currentQuery();
+    var matched = q ? filterLockers( q ) : lockers;
+    if ( q && matched.length ) { fitToMatched( matched ); }
+    showResults();
   }
 
   function renderMapAndList() {
     if ( ! lockers.length ) { renderEmpty(); return; }
 
     var $b = $box().empty();
+    var chooseLbl = esc( i18n.choose || 'Choose an EasyBox locker' );
     $b.append(
-      '<label class="webbership-ss-search-label" for="webbership-ss-search">' + esc( i18n.choose || 'Choose an EasyBox locker' ) + '</label>' +
-      '<input type="text" id="webbership-ss-search" class="webbership-ss-search" autocomplete="off" placeholder="' + esc( i18n.search || '' ) + '">' +
+      '<div class="webbership-ss-confirm" role="status" hidden></div>' +
+      '<label class="webbership-ss-search-label" for="webbership-ss-search">' + chooseLbl + '</label>' +
+      '<div class="webbership-ss-search-wrap">' + SEARCH_ICON +
+      '<input type="search" id="webbership-ss-search" class="webbership-ss-search" autocomplete="off" placeholder="' + esc( i18n.search || '' ) + '">' +
+      '</div>' +
       '<div class="webbership-ss-live" aria-live="polite"></div>' +
       '<div class="webbership-ss-layout">' +
       '<div class="webbership-ss-map" id="webbership-ss-map"></div>' +
-      '<ul class="webbership-ss-list" id="webbership-ss-list" role="listbox" aria-label="' + esc( i18n.choose || 'Choose an EasyBox locker' ) + '"></ul>' +
+      '<ul class="webbership-ss-list" id="webbership-ss-list" role="listbox" aria-label="' + chooseLbl + '"></ul>' +
       '</div>'
     );
 
     initMap();
-    showResults( '' );
+    showResults();
     built = true;
 
     // Re-apply a prior choice first (the review-table refresh blanked the hidden
@@ -220,11 +256,7 @@
     var preset = selected ? findById( selected.id ) : ( W.preferred && W.preferred.id ? findById( W.preferred.id ) : null );
     if ( preset ) { selectLocker( preset, true ); }
 
-    var debounced = debounce( function () {
-      var q = $( '#webbership-ss-search' ).val().trim().toLowerCase();
-      showResults( q );
-    }, 250 );
-    $b.on( 'input', '#webbership-ss-search', debounced );
+    $b.on( 'input', '#webbership-ss-search', debounce( applySearch, 250 ) );
   }
 
   function renderEmpty() {
@@ -246,11 +278,29 @@
       if ( ! l.lat || ! l.lng ) { return; }
       var m = L.marker( [ l.lat, l.lng ] );
       m.bindPopup( popupHtml( l ) );
-      m.on( 'click', function () { selectLocker( l, false ); } );
+      m._lockerId = l.id;
       markersById[ l.id ] = m;
       cluster.addLayer( m );
     } );
     map.addLayer( cluster );
+
+    // Opening a pin previews it in the list (scroll + highlight) without committing;
+    // the commit happens via the popup's Select button or a list-row click.
+    map.on( 'popupopen', function ( e ) {
+      var src = e.popup && e.popup._source;
+      if ( src && src._lockerId != null ) {
+        var l = findById( src._lockerId );
+        if ( l ) { focusLocker( l ); }
+      }
+    } );
+    // The list mirrors the map: re-derive it whenever the viewport settles.
+    map.on( 'moveend', showResults );
+    // Commit the chosen locker straight from its pin popup.
+    $( '#webbership-ss-map' ).on( 'click', '.webbership-ss-popup-select', function () {
+      var l = findById( $( this ).attr( 'data-id' ) );
+      if ( l ) { selectLocker( l, false ); }
+    } );
+
     // Recalculate size once the container is visible (it was hidden on init).
     setTimeout( function () { if ( map ) { map.invalidateSize(); } }, 0 );
   }
@@ -281,6 +331,9 @@
       } else {
         $li.attr( 'aria-selected', 'false' );
       }
+      if ( focusedId != null && String( focusedId ) === String( l.id ) ) {
+        $li.addClass( 'is-focused' );
+      }
       $li.on( 'click', function () { selectLocker( l, false ); } );
       $li.on( 'keydown', function ( e ) {
         if ( e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32 ) {
@@ -307,11 +360,12 @@
 
   function selectLocker( l, isPreset ) {
     selected = l;
+    focusedId = null;   // a commit supersedes any pin preview
 
-    // List highlight (re-mark currently rendered rows; row may not be in the
+    // List highlight (re-mark currently rendered rows; the row may not be in the
     // filtered list, that's fine — the hidden field still holds the choice).
-    $( '.webbership-ss-row' ).removeClass( 'is-selected' ).attr( 'aria-selected', 'false' );
-    var $row = $( '.webbership-ss-row' ).filter( function () { return String( $( this ).attr( 'data-id' ) ) === String( l.id ); } );
+    $( '.webbership-ss-row' ).removeClass( 'is-selected is-focused' ).attr( 'aria-selected', 'false' );
+    var $row = rowById( l.id );
     $row.addClass( 'is-selected' ).attr( 'aria-selected', 'true' );
 
     // Map: open the marker popup, center on it.
@@ -326,17 +380,49 @@
       else { map.flyTo( [ l.lat, l.lng ], Math.max( map.getZoom(), 13 ) ); }
     }
 
-    // aria-live announcement.
+    renderConfirm( l );
     $( '.webbership-ss-live' ).text( ( i18n.selected || 'Selected' ) + ': ' + l.name + ', ' + l.city );
 
     // Write the snapshot the checkout submits + notify WooCommerce.
     var snap = { id: l.id, name: l.name, city: l.city, address: l.address, lat: l.lat, lng: l.lng };
     $field().val( JSON.stringify( snap ) ).trigger( 'change' );
 
-    if ( isPreset && $row.length ) {
-      var el = $row.get( 0 );
-      if ( el && el.scrollIntoView ) { el.scrollIntoView( { block: 'nearest' } ); }
-    }
+    scrollRowIntoView( $row );
+  }
+
+  // Preview a locker from its map pin: scroll its row into view + highlight, but
+  // don't commit (commit is the popup Select button or a row click).
+  function focusLocker( l ) {
+    focusedId = l.id;
+    $( '.webbership-ss-row' ).removeClass( 'is-focused' );
+    scrollRowIntoView( rowById( l.id ).addClass( 'is-focused' ) );
+  }
+
+  // Persistent, sighted confirmation of the committed locker (the aria-live region
+  // only speaks to screen readers).
+  function renderConfirm( l ) {
+    var $c = $( '.webbership-ss-confirm' );
+    if ( ! $c.length ) { return; }
+    if ( ! l ) { $c.prop( 'hidden', true ).empty(); return; }
+    $c.prop( 'hidden', false ).empty().append(
+      $( '<span class="webbership-ss-confirm-check" aria-hidden="true">✓</span>' ),
+      $( '<span class="webbership-ss-confirm-text"/>' ).append(
+        $( '<span class="webbership-ss-confirm-label"/>' ).text( i18n.selected || 'Selected' ),
+        $( '<strong/>' ).text( l.name ),
+        $( '<span/>' ).text( l.city )
+      )
+    );
+  }
+
+  function rowById( id ) {
+    return $( '.webbership-ss-row' ).filter( function () {
+      return String( $( this ).attr( 'data-id' ) ) === String( id );
+    } );
+  }
+
+  function scrollRowIntoView( $row ) {
+    var el = $row.get( 0 );
+    if ( el && el.scrollIntoView ) { el.scrollIntoView( { block: 'nearest' } ); }
   }
 
   // --- helpers -------------------------------------------------------------
@@ -351,7 +437,13 @@
   }
 
   function popupHtml( l ) {
-    return '<strong>' + esc( l.name ) + '</strong><br>' + esc( l.address ) + '<br>' + esc( l.city );
+    return '<div class="webbership-ss-popup">' +
+      '<strong>' + esc( l.name ) + '</strong>' +
+      '<span>' + esc( l.address ) + '</span>' +
+      '<span>' + esc( l.city ) + '</span>' +
+      '<button type="button" class="button webbership-ss-popup-select" data-id="' + esc( l.id ) + '">' +
+      esc( i18n.select || 'Select this locker' ) + '</button>' +
+      '</div>';
   }
 
   function esc( s ) {
