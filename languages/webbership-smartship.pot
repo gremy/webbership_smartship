@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-30T13:03:45+00:00\n"
+"POT-Creation-Date: 2026-06-30T17:47:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -63,7 +63,7 @@ msgstr ""
 #: includes/Settings/class-settings.php:83
 #: includes/Settings/class-settings.php:84
 #: includes/Settings/class-settings.php:132
-#: modules/checkout-rates/class-shipping-method.php:51
+#: modules/checkout-rates/class-shipping-method.php:52
 msgid "SmartShip"
 msgstr ""
 
@@ -131,6 +131,20 @@ msgstr ""
 
 #: includes/Settings/class-settings.php:224
 msgid "Test connection"
+msgstr ""
+
+#: includes/Support/class-tax.php:21
+msgid "Taxes are off in WooCommerce, so this is the final price the customer pays."
+msgstr ""
+
+#. translators: %s: the store's shipping tax rate, e.g. "21%".
+#: includes/Support/class-tax.php:39
+#, php-format
+msgid "Enter the amount WITHOUT VAT — WooCommerce adds %s shipping tax on top at checkout."
+msgstr ""
+
+#: includes/Support/class-tax.php:41
+msgid "Enter the amount WITHOUT VAT — WooCommerce adds shipping tax on top at checkout, per your tax settings."
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:34
@@ -266,9 +280,9 @@ msgid "Estimate"
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:245
-#: modules/easybox/class-easybox-method.php:33
-#: modules/easybox/class-easybox-method.php:43
-#: modules/easybox/class-easybox-method.php:64
+#: modules/easybox/class-easybox-method.php:34
+#: modules/easybox/class-easybox-method.php:44
+#: modules/easybox/class-easybox-method.php:65
 #: modules/easybox/class-easybox-pricing.php:34
 #: modules/easybox/class-easybox-pricing.php:37
 msgid "EasyBox locker"
@@ -306,112 +320,112 @@ msgstr ""
 msgid "SmartShip did not return a valid PDF."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:28
+#: modules/checkout-rates/class-shipping-method.php:29
 msgid "SmartShip Live Rates"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:29
+#: modules/checkout-rates/class-shipping-method.php:30
 msgid "Live courier rates from SmartShip, with a fallback flat rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:49
-#: modules/easybox/class-easybox-method.php:41
+#: modules/checkout-rates/class-shipping-method.php:50
+#: modules/easybox/class-easybox-method.php:42
 msgid "Method title"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:52
+#: modules/checkout-rates/class-shipping-method.php:53
 msgid "Heading shown above the courier choices at checkout."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:56
+#: modules/checkout-rates/class-shipping-method.php:57
 msgid "Couriers to offer"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:61
+#: modules/checkout-rates/class-shipping-method.php:62
 msgid "Pick which couriers customers may choose. Leave empty to offer every courier SmartShip returns for the destination."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:65
+#: modules/checkout-rates/class-shipping-method.php:66
 msgid "Courier label overrides"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:68
+#: modules/checkout-rates/class-shipping-method.php:69
 msgid "Rename couriers at checkout. One per line as courier_id|Custom label (e.g. 16|Curier rapid). The IDs are shown in brackets in the \"Couriers to offer\" list above."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:72
+#: modules/checkout-rates/class-shipping-method.php:73
 msgid "Markup"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:75
+#: modules/checkout-rates/class-shipping-method.php:76
 msgid "None"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:75
+#: modules/checkout-rates/class-shipping-method.php:76
 msgid "Flat amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:75
+#: modules/checkout-rates/class-shipping-method.php:76
 msgid "Percent"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:76
+#: modules/checkout-rates/class-shipping-method.php:77
 msgid "Optionally add a handling fee on top of each live rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:80
+#: modules/checkout-rates/class-shipping-method.php:81
 msgid "Markup amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:83
+#: modules/checkout-rates/class-shipping-method.php:84
 msgid "With \"Flat amount\", the fee added in your store currency. With \"Percent\", the percentage added to each rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:87
-#: modules/easybox/class-easybox-method.php:55
+#: modules/checkout-rates/class-shipping-method.php:88
+#: modules/easybox/class-easybox-method.php:56
 msgid "Fallback flat rate"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:90
+#: modules/checkout-rates/class-shipping-method.php:91
 msgid "Flat price charged when live rates cannot be fetched (SmartShip slow or down, or the address is outside Romania)."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:94
-#: modules/easybox/class-easybox-method.php:62
+#: modules/checkout-rates/class-shipping-method.php:95
+#: modules/easybox/class-easybox-method.php:63
 msgid "Fallback label"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:96
-#: modules/checkout-rates/class-shipping-method.php:119
+#: modules/checkout-rates/class-shipping-method.php:97
+#: modules/checkout-rates/class-shipping-method.php:120
 msgid "Shipping"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:97
-#: modules/easybox/class-easybox-method.php:65
+#: modules/checkout-rates/class-shipping-method.php:98
+#: modules/easybox/class-easybox-method.php:66
 msgid "Label shown to the customer for the fallback flat rate."
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:24
+#: modules/easybox/class-easybox-method.php:25
 msgid "EasyBox locker (SameDay)"
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:25
+#: modules/easybox/class-easybox-method.php:26
 msgid "Locker delivery, priced from the live SameDay rate. Customers choose their locker on a map at checkout."
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:44
+#: modules/easybox/class-easybox-method.php:45
 msgid "Label shown to the customer at checkout."
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:48
+#: modules/easybox/class-easybox-method.php:49
 msgid "Price factor (%)"
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:51
+#: modules/easybox/class-easybox-method.php:52
 msgid "Percent of the live SameDay home rate. 80 means 20% off — the measured EasyBox discount."
 msgstr ""
 
-#: modules/easybox/class-easybox-method.php:58
+#: modules/easybox/class-easybox-method.php:59
 msgid "Flat price charged when no live SameDay rate is available (SmartShip slow or down, or the address is outside Romania)."
 msgstr ""
 

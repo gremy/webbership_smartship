@@ -31,6 +31,7 @@ require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Settings/class-settings.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Api/class-smartship-client.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Support/class-city-resolver.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Support/class-cost-service.php';
+require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/Support/class-tax.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'includes/class-logger.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-easybox-pricing.php';
 require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-easybox-module.php';

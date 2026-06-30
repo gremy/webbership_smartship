@@ -5,6 +5,7 @@ namespace Webbership\Smartship\Modules\CheckoutRates;
 
 use Webbership\Smartship\Api\SmartShipClient;
 use Webbership\Smartship\Support\CostService;
+use Webbership\Smartship\Support\Tax;
 use Webbership\Smartship\Settings\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -87,7 +88,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'title'       => __( 'Fallback flat rate', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => '0',
-        'description' => __( 'Flat price charged when live rates cannot be fetched (SmartShip slow or down, or the address is outside Romania).', 'webbership-smartship' ),
+        'description' => __( 'Flat price charged when live rates cannot be fetched (SmartShip slow or down, or the address is outside Romania).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
         'desc_tip'    => true,
       ],
       'fallback_title' => [
