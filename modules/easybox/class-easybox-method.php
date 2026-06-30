@@ -118,10 +118,11 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
       return;
     }
 
+    $divisor = Tax::shipping_vat_divisor(); // API returns cu TVA; WC expects ex-VAT.
     $this->add_rate( [
       'id'        => $this->get_rate_id(),
       'label'     => $config['title'],
-      'cost'      => EasyBoxPricing::price( $sameday, $config ),
+      'cost'      => EasyBoxPricing::price( $sameday / $divisor, $config ),
       'meta_data' => [ 'easybox' => 1 ],
     ] );
   }

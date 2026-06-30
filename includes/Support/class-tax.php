@@ -16,6 +16,20 @@ final class Tax {
    * based on the store's WooCommerce tax configuration. WooCommerce treats shipping
    * costs as tax-exclusive and adds shipping tax on top at checkout when taxes are on.
    */
+  /**
+   * Returns the factor by which to divide an API cost that already includes VAT,
+   * so WooCommerce can add the correct tax on top without double-taxing.
+   * e.g. at 21%: 31.35 / 1.21 = 25.91 → WC adds 21% → 31.35 displayed.
+   * Returns 1.0 when taxes are disabled or no shipping tax rate is configured.
+   */
+  public static function shipping_vat_divisor(): float {
+    if ( ! function_exists( 'wc_tax_enabled' ) || ! wc_tax_enabled() || ! class_exists( '\WC_Tax' ) ) {
+      return 1.0;
+    }
+    $total = array_sum( array_column( (array) \WC_Tax::get_shipping_tax_rates(), 'rate' ) );
+    return $total > 0 ? 1 + $total / 100 : 1.0;
+  }
+
   public static function shipping_note(): string {
     if ( ! function_exists( 'wc_tax_enabled' ) || ! wc_tax_enabled() ) {
       return __( 'Taxes are off in WooCommerce, so this is the final price the customer pays.', 'webbership-smartship' );

@@ -153,11 +153,12 @@ final class ShippingMethod extends \WC_Shipping_Method {
       $this->add_fallback( $config );
       return;
     }
+    $divisor = Tax::shipping_vat_divisor(); // API returns cu TVA; WC expects ex-VAT.
     foreach ( $rates as $r ) {
       $this->add_rate( [
         'id'        => $r['id'],
         'label'     => $r['label'],
-        'cost'      => $r['cost'],
+        'cost'      => round( $r['cost'] / $divisor, 2 ),
         'meta_data' => [ 'courier_id' => $r['courier_id'] ],
       ] );
     }
