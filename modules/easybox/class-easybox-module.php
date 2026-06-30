@@ -41,6 +41,8 @@ final class EasyBoxModule extends Module {
     if ( '' === $key ) {
       wp_send_json_error( [ 'message' => __( 'EasyBox is not configured.', 'webbership-smartship' ) ], 503 );
     }
+    // Public, slowly-changing list — let the browser cache it (override admin-ajax's no-cache).
+    header( 'Cache-Control: public, max-age=3600' );
     wp_send_json_success( [ 'lockers' => LockerRepository::all( new SmartShipClient( $key ) ) ] );
   }
 }

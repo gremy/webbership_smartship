@@ -59,9 +59,17 @@ final class SmartShipClient {
   }
 
   public function get_easybox( int $timeout = self::TIMEOUT ): array {
-    return $this->cached( 'easybox', DAY_IN_SECONDS, function () use ( $timeout ) {
-      return $this->request( 'GET', '/geolocation/easybox', [ 'timeout' => $timeout ] );
-    } );
+    return $this->cached(
+      'easybox',
+      DAY_IN_SECONDS,
+      function () use ( $timeout ) {
+        return $this->request( 'GET', '/geolocation/easybox', [ 'timeout' => $timeout ] );
+      },
+      // Only cache a NON-empty list — never pin an empty {easybox:[]} for a day.
+      static function ( array $res ): bool {
+        return ! empty( $res['ok'] ) && ! empty( $res['easybox'] ) && is_array( $res['easybox'] );
+      }
+    );
   }
 
   public function cost( array $body, int $timeout = self::TIMEOUT ): array {
@@ -128,15 +136,20 @@ final class SmartShipClient {
     return $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'webbership-smartship' ) );
   }
 
-  /** Cache a successful tuple under an API-key-fingerprinted transient. */
-  private function cached( string $key, int $ttl, callable $fetch ): array {
+  /**
+   * Cache a successful tuple under an API-key-fingerprinted transient.
+   * By default caches any `ok` response; pass $should_cache to refine (e.g. so an
+   * empty list isn't pinned for a day, letting a transient blip recover next call).
+   */
+  private function cached( string $key, int $ttl, callable $fetch, ?callable $should_cache = null ): array {
     $tk  = 'webbership_ss_' . substr( md5( $this->api_key ), 0, 12 ) . '_' . $key;
     $hit = get_transient( $tk );
     if ( is_array( $hit ) ) {
       return $hit;
     }
-    $res = $fetch();
-    if ( ! empty( $res['ok'] ) ) {
+    $res   = $fetch();
+    $store = $should_cache ? (bool) $should_cache( $res ) : ! empty( $res['ok'] );
+    if ( $store ) {
       set_transient( $tk, $res, $ttl );
     }
     return $res;
