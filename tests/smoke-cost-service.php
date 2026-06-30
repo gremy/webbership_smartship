@@ -44,7 +44,7 @@ class FakeCostClient {
   }
   public function get_senders( int $t = 0 ): array {
     return [ 'ok' => true, 'status' => 200, 'senders' => [
-      [ 'id' => 7, 'nume' => 'Ovride', 'adresa' => 'Str. 1', 'email' => 's@x.ro', 'localitate_id' => 263852, 'telefon' => '0700', 'sector' => '0' ],
+      [ 'id' => 7, 'nume' => 'Test Sender', 'adresa' => 'Str. 1', 'email' => 's@x.ro', 'localitate_id' => 263852, 'telefon' => '0700', 'sector' => '0' ],
     ] ];
   }
   public function cost( array $body, int $t = 0 ): array {
