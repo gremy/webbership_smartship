@@ -43,6 +43,12 @@ final class AwbMetabox {
     wp_localize_script( 'webbership-smartship-awb', 'WebbershipSmartShip', [
       'ajax'  => admin_url( 'admin-ajax.php' ),
       'nonce' => wp_create_nonce( self::NONCE ),
+      'i18n'  => [
+        'copied'   => __( 'Copied!', 'webbership-smartship' ),
+        'enterAwb' => __( 'Enter the AWB number.', 'webbership-smartship' ),
+        'saving'   => __( 'Saving…', 'webbership-smartship' ),
+        'failed'   => __( 'Failed', 'webbership-smartship' ),
+      ],
     ] );
   }
 
