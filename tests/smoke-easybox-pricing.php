@@ -22,6 +22,20 @@ same( 0.65, EasyBoxPricing::config( [ 'easybox_factor' => '65' ] )['factor'], 'p
 same( 0.10, EasyBoxPricing::config( [ 'easybox_factor' => '0' ] )['factor'], 'clamp low to 0.10' );
 same( 3.00, EasyBoxPricing::config( [ 'easybox_factor' => '9999' ] )['factor'], 'clamp high to 3.00' );
 
+// blank / non-numeric factor → DEFAULT (not 0.10); explicit numeric '0' clamps to floor
+same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => '' ] )['factor'], 'blank factor -> default 0.80' );
+same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => '  ' ] )['factor'], 'whitespace factor -> default' );
+same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => null ] )['factor'], 'null factor -> default' );
+same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => 'abc' ] )['factor'], 'non-numeric factor -> default' );
+same( 0.10, EasyBoxPricing::config( [ 'easybox_factor' => '0' ] )['factor'], 'explicit 0 clamps to floor' );
+
+// title: default + sanitize (trim)
+same( 'EasyBox locker', EasyBoxPricing::config( [] )['title'], 'title default' );
+same( 'Pickup', EasyBoxPricing::config( [ 'title' => '  Pickup  ' ] )['title'], 'title trimmed' );
+
+// negative fallback amount floored at 0
+same( 0.0, EasyBoxPricing::config( [ 'fallback_amount' => '-9' ] )['fallback'], 'negative fallback floored' );
+
 // negative cost never goes below 0
 same( 0.0, EasyBoxPricing::price( -5.0, $cfg ), 'negative cost floored at 0' );
 

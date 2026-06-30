@@ -25,7 +25,10 @@ final class EasyBoxPricing {
    * to a sane [10%, 300%] band so a typo can't produce a 0 or absurd price.
    */
   public static function config( array $instance ): array {
-    $pct    = isset( $instance['easybox_factor'] ) ? (float) $instance['easybox_factor'] : self::DEFAULT_FACTOR * 100;
+    // A blank or non-numeric field means "not set" → default, NOT 0% (which would
+    // clamp to 10% and badly under-charge). An explicit numeric '0' still clamps.
+    $raw    = isset( $instance['easybox_factor'] ) ? trim( (string) $instance['easybox_factor'] ) : '';
+    $pct    = ( '' !== $raw && is_numeric( $raw ) ) ? (float) $raw : self::DEFAULT_FACTOR * 100;
     $factor = max( 0.10, min( 3.00, $pct / 100 ) );
     return [
       'title'          => sanitize_text_field( (string) ( $instance['title'] ?? __( 'EasyBox locker', 'webbership-smartship' ) ) ),
