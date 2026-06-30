@@ -70,6 +70,7 @@ final class EasyBoxModule extends Module {
         'retry'    => __( 'Retry', 'webbership-smartship' ),
         'selected' => __( 'Selected', 'webbership-smartship' ),
         'choose'   => __( 'Choose an EasyBox locker', 'webbership-smartship' ),
+        'more'     => __( 'Type to narrow the list…', 'webbership-smartship' ),
       ],
     ] );
   }

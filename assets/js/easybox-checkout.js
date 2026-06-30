@@ -40,12 +40,12 @@
     var hit = false;
     // Radio/hidden inputs that carry the chosen rate id.
     $( 'input.shipping_method:checked, #shipping_method input:checked' ).each( function () {
-      if ( String( this.value ).indexOf( id ) === 0 ) { hit = true; }
+      if ( this.value === id || String( this.value ).indexOf( id + ':' ) === 0 ) { hit = true; }
     } );
     // Single-method checkouts render a hidden input (not a radio) with no :checked.
     if ( ! hit ) {
       $( 'input.shipping_method[type="hidden"]' ).each( function () {
-        if ( String( this.value ).indexOf( id ) === 0 ) { hit = true; }
+        if ( this.value === id || String( this.value ).indexOf( id + ':' ) === 0 ) { hit = true; }
       } );
     }
     return hit;
@@ -169,6 +169,32 @@
     return { center: RO_CENTER, zoom: RO_ZOOM };
   }
 
+  var LIST_MAX = 60;
+
+  function dist2( l, c ) {
+    if ( ! l.lat || ! l.lng ) { return Infinity; }
+    var dx = l.lat - c[0], dy = l.lng - c[1];
+    return dx * dx + dy * dy;
+  }
+  // Nearest-first (squared lat/lng distance to the start center) so the capped list is useful.
+  function byDistance( items ) {
+    var c = startCenter().center;
+    return items.slice().sort( function ( a, b ) { return dist2( a, c ) - dist2( b, c ); } );
+  }
+  // Sync the map cluster to a subset so a search narrows map + list together.
+  function updateMarkers( items ) {
+    if ( ! cluster ) { return; }
+    cluster.clearLayers();
+    items.forEach( function ( l ) { var m = markersById[ l.id ]; if ( m ) { cluster.addLayer( m ); } } );
+  }
+  // Render the capped, nearest-first list AND narrow the map to the current query.
+  function showResults( q ) {
+    var matched = q ? filterLockers( q ) : lockers;
+    var sorted  = byDistance( matched );
+    renderList( sorted.slice( 0, LIST_MAX ), sorted.length );
+    updateMarkers( matched );
+  }
+
   function renderMapAndList() {
     if ( ! lockers.length ) { renderEmpty(); return; }
 
@@ -184,7 +210,7 @@
     );
 
     initMap();
-    renderList( lockers );
+    showResults( '' );
     built = true;
 
     // Re-apply a prior choice first (the review-table refresh blanked the hidden
@@ -194,7 +220,7 @@
 
     var debounced = debounce( function () {
       var q = $( '#webbership-ss-search' ).val().trim().toLowerCase();
-      renderList( filterLockers( q ) );
+      showResults( q );
     }, 250 );
     $b.on( 'input', '#webbership-ss-search', debounced );
   }
@@ -227,7 +253,7 @@
     setTimeout( function () { if ( map ) { map.invalidateSize(); } }, 0 );
   }
 
-  function renderList( items ) {
+  function renderList( items, total ) {
     var $list = $( '#webbership-ss-list' ).empty();
     if ( ! items.length ) {
       $list.append( '<li class="webbership-ss-empty">' + esc( i18n.empty || 'No lockers found.' ) + '</li>' );
@@ -262,6 +288,9 @@
       } );
       $list.append( $li );
     } );
+    if ( total && total > items.length ) {
+      $list.append( $( '<li class="webbership-ss-more" aria-hidden="true"/>' ).text( i18n.more || 'Type to narrow the list…' ) );
+    }
   }
 
   function filterLockers( q ) {
@@ -280,7 +309,7 @@
     // List highlight (re-mark currently rendered rows; row may not be in the
     // filtered list, that's fine — the hidden field still holds the choice).
     $( '.webbership-ss-row' ).removeClass( 'is-selected' ).attr( 'aria-selected', 'false' );
-    var $row = $( '.webbership-ss-row[data-id="' + l.id + '"]' );
+    var $row = $( '.webbership-ss-row' ).filter( function () { return String( $( this ).attr( 'data-id' ) ) === String( l.id ); } );
     $row.addClass( 'is-selected' ).attr( 'aria-selected', 'true' );
 
     // Map: open the marker popup, center on it.
