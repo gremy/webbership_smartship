@@ -58,6 +58,12 @@ final class SmartShipClient {
     } );
   }
 
+  public function get_easybox( int $timeout = self::TIMEOUT ): array {
+    return $this->cached( 'easybox', DAY_IN_SECONDS, function () use ( $timeout ) {
+      return $this->request( 'GET', '/geolocation/easybox', [ 'timeout' => $timeout ] );
+    } );
+  }
+
   public function cost( array $body, int $timeout = self::TIMEOUT ): array {
     return $this->request( 'POST', '/cost', [ 'body' => $body, 'shop_headers' => true, 'timeout' => $timeout ] );
   }

@@ -21,6 +21,7 @@ function wp_specialchars_decode( $s, $q = null ) { return $s; }
 function get_transient( $k ) { return false; }
 function set_transient( $k, $v, $ttl ) { return true; }
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) { define( 'HOUR_IN_SECONDS', 3600 ); }
+if ( ! defined( 'DAY_IN_SECONDS' ) ) { define( 'DAY_IN_SECONDS', 86400 ); }
 function wp_remote_get( $url, $args = [] ) { return wp_remote_request( $url, $args ); }
 function wp_remote_retrieve_header( $r, $h ) { return is_array( $r ) ? ( $r['headers'][ strtolower( $h ) ] ?? '' ) : ''; }
 
@@ -137,6 +138,10 @@ assert_same( 7, $GLOBALS['webbership_ss_last_request']['args']['timeout'], 'coun
 ss_set_response( 200, [ 'status' => 200, 'senders' => [] ] );
 $client->get_senders( 5 );
 assert_same( 5, $GLOBALS['webbership_ss_last_request']['args']['timeout'], 'senders: custom timeout' );
+ss_set_response( 200, [ 'status' => 200, 'easybox' => [] ] );
+$client->get_easybox( 8 );
+assert_true( strpos( $GLOBALS['webbership_ss_last_request']['url'], '/geolocation/easybox' ) !== false, 'easybox: endpoint' );
+assert_same( 8, $GLOBALS['webbership_ss_last_request']['args']['timeout'], 'easybox: custom timeout' );
 
 // 10) cost sends shop headers; create_awb does not.
 ss_set_response( 200, [ 'status' => 200, 'costs' => [] ] );
