@@ -22,6 +22,8 @@ final class EasyBoxModule extends Module {
   public function register_hooks(): void {
     require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-easybox-method.php';
     require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-locker-repository.php';
+    require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-easybox-order.php';
+    ( new EasyBoxOrder() )->register_hooks();
     add_filter( 'woocommerce_shipping_methods', [ $this, 'register_method' ] );
     add_action( 'wp_ajax_webbership_ss_lockers', [ $this, 'ajax_lockers' ] );
     add_action( 'wp_ajax_nopriv_webbership_ss_lockers', [ $this, 'ajax_lockers' ] );
