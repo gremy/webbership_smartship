@@ -26,6 +26,10 @@
 
   margin: 0.75em 0;
   font-size: 0.95em;
+  /* Host themes often center the checkout review cell this renders inside; that
+     inherited text-align staggers each row's lines into a ragged cascade. Anchor
+     the whole picker left (state/empty rules below re-center themselves). */
+  text-align: left;
 }
 
 .webbership-ss-easybox[hidden] {
