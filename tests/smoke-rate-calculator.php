@@ -6,8 +6,34 @@ define( 'ABSPATH', __DIR__ );
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
 
+class WC_Tax {
+  public static array $rates = [];
+
+  public static function get_shipping_tax_rates(): array {
+    return self::$rates;
+  }
+}
+
+class SmokeCustomer {
+  public function __construct( private bool $vat_exempt = false ) {}
+
+  public function get_is_vat_exempt(): bool {
+    return $this->vat_exempt;
+  }
+}
+
+function WC(): object {
+  return $GLOBALS['webbership_smoke_wc'];
+}
+
+function wc_tax_enabled(): bool {
+  return $GLOBALS['webbership_smoke_tax_enabled'] ?? true;
+}
+
 require_once __DIR__ . '/../modules/checkout-rates/class-rate-calculator.php';
+require_once __DIR__ . '/../includes/Support/class-tax.php';
 use Webbership\Smartship\Modules\CheckoutRates\RateCalculator;
+use Webbership\Smartship\Support\Tax;
 
 $costs = [
   [ 'courier_id' => 16, 'courier_name' => 'SmartShip Delivery', 'cost' => 17.97 ],
@@ -59,5 +85,13 @@ $f = RateCalculator::fallback_rate( [ 'fallback_amount' => 19.99, 'fallback_titl
 assert_same( 'webbership_smartship:fallback', $f['id'], 'fallback id' );
 assert_same( 'Curier standard', $f['label'], 'fallback label' );
 assert_true( abs( $f['cost'] - 19.99 ) < 0.001, 'fallback cost' );
+
+// VAT-inclusive API costs are divided only when WooCommerce will add shipping tax.
+$GLOBALS['webbership_smoke_wc'] = (object) [ 'customer' => new SmokeCustomer( false ) ];
+\WC_Tax::$rates = [ [ 'rate' => 21 ] ];
+assert_true( abs( Tax::shipping_vat_divisor() - 1.21 ) < 0.001, 'shipping VAT divisor uses shipping tax rate' );
+
+$GLOBALS['webbership_smoke_wc'] = (object) [ 'customer' => new SmokeCustomer( true ) ];
+assert_same( 1.0, Tax::shipping_vat_divisor(), 'VAT-exempt customers keep API shipping cost intact' );
 
 echo "smoke-rate-calculator: all assertions passed\n";

@@ -55,10 +55,12 @@ final class Plugin {
 
   public static function deactivate(): void {
     global $wpdb;
+    // Every transient this plugin sets is named webbership_ss_* (rates, sender
+    // blocks, lockers, the failure-cache) — NOT webbership_smartship_*.
     $wpdb->query(
       "DELETE FROM {$wpdb->options}
-        WHERE option_name LIKE '\\_transient\\_webbership\\_smartship\\_%'
-           OR option_name LIKE '\\_transient\\_timeout\\_webbership\\_smartship\\_%'"
+        WHERE option_name LIKE '\\_transient\\_webbership\\_ss\\_%'
+           OR option_name LIKE '\\_transient\\_timeout\\_webbership\\_ss\\_%'"
     );
   }
 }

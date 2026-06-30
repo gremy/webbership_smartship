@@ -26,6 +26,15 @@ final class Tax {
     if ( ! function_exists( 'wc_tax_enabled' ) || ! wc_tax_enabled() || ! class_exists( '\WC_Tax' ) ) {
       return 1.0;
     }
+
+    $customer = function_exists( 'WC' ) && WC() ? WC()->customer ?? null : null;
+    if ( $customer && is_callable( [ $customer, 'get_is_vat_exempt' ] ) && $customer->get_is_vat_exempt() ) {
+      return 1.0;
+    }
+
+    // ponytail: sums rates as flat (additive), not compound — correct for this
+    // store's current flat-VAT setup. If a compound shipping tax class is ever
+    // configured, this needs to multiply factors sequentially instead.
     $total = array_sum( array_column( (array) \WC_Tax::get_shipping_tax_rates(), 'rate' ) );
     return $total > 0 ? 1 + $total / 100 : 1.0;
   }

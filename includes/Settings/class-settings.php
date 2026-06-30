@@ -26,6 +26,10 @@ final class Settings {
     add_action( 'admin_menu', [ $this, 'add_menu' ] );
     add_action( 'admin_init', [ $this, 'register_settings' ] );
     add_action( 'admin_post_' . self::ACTION_TEST, [ $this, 'handle_test_connection' ] );
+    // options.php hardcodes manage_options unless this filter says otherwise — without
+    // it, a Shop Manager (manage_woocommerce) can open the page above but gets a 403
+    // wp_die on save.
+    add_filter( 'option_page_capability_' . self::GROUP, static fn() => self::CAPABILITY );
   }
 
   public function handle_test_connection(): void {

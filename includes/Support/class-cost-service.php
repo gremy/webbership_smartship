@@ -45,7 +45,7 @@ final class CostService {
       return null;
     }
 
-    $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight );
+    $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
     $cached = get_transient( $key );
     if ( is_array( $cached ) ) {
       return $cached;

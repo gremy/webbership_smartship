@@ -19,10 +19,16 @@ function is_user_logged_in() { return (bool) $GLOBALS['ss_logged_in']; }
 function get_current_user_id() { return 42; }
 function update_user_meta( $uid, $key, $val ) { $GLOBALS['ss_user_meta'][] = [ $uid, $key, $val ]; return true; }
 
+// Cached locker list parse_locker() cross-checks the submitted id against. false
+// (the default) simulates a cold cache -> the cross-check is skipped.
+$GLOBALS['ss_locker_cache'] = false;
+function get_transient( $k ) { return $GLOBALS['ss_locker_cache']; }
+
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': expected ' . var_export( $e, true ) . ', got ' . var_export( $a, true ) ); } }
 
 require_once __DIR__ . '/../modules/easybox/class-easybox-pricing.php';
+require_once __DIR__ . '/../modules/easybox/class-locker-repository.php';
 require_once __DIR__ . '/../modules/easybox/class-easybox-order.php';
 
 use Webbership\Smartship\Modules\EasyBox\EasyBoxOrder;
@@ -52,8 +58,9 @@ $valid_json = json_encode( [
 ] );
 
 function reset_env(): void {
-  $GLOBALS['ss_user_meta'] = [];
-  $GLOBALS['ss_logged_in'] = true;
+  $GLOBALS['ss_user_meta']    = [];
+  $GLOBALS['ss_logged_in']    = true;
+  $GLOBALS['ss_locker_cache'] = false;
   unset( $_POST['webbership_ss_locker'] );
 }
 
@@ -216,5 +223,28 @@ $wc_order = new FakeOrder();
 $order->save( $wc_order, $data );
 assert_same( 1234, $wc_order->meta['_webbership_smartship_easybox_id'], 'logged-out: order meta saved' );
 assert_same( 0, count( $GLOBALS['ss_user_meta'] ), 'logged-out: no preferred-locker user meta' );
+
+// ---------------------------------------------------------------------------
+// 6) Locker id cross-checked against the cached real list when the cache is warm.
+// ---------------------------------------------------------------------------
+reset_env();
+$GLOBALS['ss_locker_cache'] = [
+  [ 'id' => 1234, 'name' => 'EasyBox Mega Mall' ],
+  [ 'id' => 5678, 'name' => 'EasyBox Other' ],
+];
+
+// A fabricated id not in the cached list -> rejected even though structurally valid.
+$_POST['webbership_ss_locker'] = json_encode( [ 'id' => 4321, 'name' => 'Fake', 'city' => 'Y', 'address' => 'Z' ] );
+$errs = new FakeErrors();
+$order->validate( $data, $errs );
+assert_same( 1, count( $errs->errors ), 'cross-check: id not in cached list -> rejected' );
+
+// A real cached id -> accepted.
+reset_env();
+$GLOBALS['ss_locker_cache'] = [ [ 'id' => 1234, 'name' => 'EasyBox Mega Mall' ] ];
+$_POST['webbership_ss_locker'] = $valid_json;
+$errs = new FakeErrors();
+$order->validate( $data, $errs );
+assert_same( 0, count( $errs->errors ), 'cross-check: id in cached list -> accepted' );
 
 echo "smoke-easybox-order: all assertions passed\n";

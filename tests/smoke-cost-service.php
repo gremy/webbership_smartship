@@ -23,9 +23,9 @@ require_once __DIR__ . '/../includes/Support/class-cost-service.php';
 
 use Webbership\Smartship\Support\CostService;
 
-// Stub Settings (sender id) the service reads. Real class isn't loaded here.
+// Stub Settings (sender id + api key) the service reads. Real class isn't loaded here.
 if ( ! class_exists( '\\Webbership\\Smartship\\Settings\\Settings' ) ) {
-  eval( 'namespace Webbership\\Smartship\\Settings; class Settings { public static $sender_id = 7; public static function sender_id(): int { return self::$sender_id; } public static function iban(): string { return ""; } }' );
+  eval( 'namespace Webbership\\Smartship\\Settings; class Settings { public static $sender_id = 7; public static $api_key = "TESTKEY"; public static function sender_id(): int { return self::$sender_id; } public static function api_key(): string { return self::$api_key; } public static function iban(): string { return ""; } }' );
 }
 
 /**
@@ -117,7 +117,7 @@ $GLOBALS['ss_store'] = [];
 $client = new FakeNoSenderClient();
 $client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
 // Pre-populate the rate cache for this city+weight (as if a prior valid estimate ran).
-set_transient( 'webbership_ss_rate_' . md5( '263804' . '|' . '1' ), $costs_payload, 600 );
+set_transient( 'webbership_ss_rate_' . md5( '263804' . '|' . '1' . '|' . '7' . '|' . 'TESTKEY' ), $costs_payload, 600 );
 assert_true( null === CostService::costs_for( $ro_pkg, $client ), 'invalid sender: null despite hot rate cache' );
 assert_same( 0, $client->cost_calls, 'invalid sender: no /cost call' );
 

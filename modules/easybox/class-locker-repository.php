@@ -25,6 +25,18 @@ final class LockerRepository {
       return $cached;
     }
 
+    // Single-flight: on a cache miss, only the first concurrent request fetches
+    // upstream (a 20s call); the rest get an empty list for this one request rather
+    // than each blocking on their own /geolocation/easybox call. The picker UI
+    // already renders an empty list as a normal "no lockers found" state, and the
+    // next request retries once the winner's fetch has populated the real cache.
+    // ponytail: wp_cache_add() is only atomic on a persistent object cache (Redis is
+    // configured for this store); without one this lock is a same-request no-op and
+    // every request still fetches, same as before this fix.
+    if ( ! wp_cache_add( self::CACHE_KEY . '_lock', 1, '', 10 ) ) {
+      return [];
+    }
+
     $res  = $client->get_easybox();
     $rows = ( is_array( $res ) && isset( $res['easybox'] ) && is_array( $res['easybox'] ) ) ? $res['easybox'] : [];
 

@@ -45,8 +45,9 @@ final class AwbPayload {
     $weight = 0.0;
     foreach ( $order->get_items() as $item ) {
       $product = method_exists( $item, 'get_product' ) ? $item->get_product() : null;
+      $qty     = method_exists( $item, 'get_quantity' ) ? (int) $item->get_quantity() : 1;
       if ( $product && '' !== (string) $product->get_weight() ) {
-        $weight += (float) $product->get_weight();
+        $weight += (float) $product->get_weight() * max( 1, $qty );
       }
     }
     $weight = max( 1.0, $weight );

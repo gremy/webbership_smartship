@@ -11,6 +11,15 @@ function get_transient( $k ) { return $GLOBALS['ss_store'][ $k ] ?? false; }
 function set_transient( $k, $v, $ttl = 0 ) { $GLOBALS['ss_store'][ $k ] = $v; return true; }
 function delete_transient( $k ) { unset( $GLOBALS['ss_store'][ $k ] ); return true; }
 
+// In-memory object-cache "add" (atomic in a real persistent cache): first caller
+// for a key wins, everyone else gets false until the lock map is reset.
+$GLOBALS['ss_lock'] = [];
+function wp_cache_add( $k, $v, $g = '', $e = 0 ) {
+  if ( isset( $GLOBALS['ss_lock'][ $k ] ) ) { return false; }
+  $GLOBALS['ss_lock'][ $k ] = true;
+  return true;
+}
+
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': expected ' . var_export( $e, true ) . ', got ' . var_export( $a, true ) ); } }
 
@@ -51,6 +60,7 @@ $idless   = [ 'name' => 'no id', 'sts' => 1, 'lat' => '3', 'lng' => '4' ];
 
 // 1) all() keeps only the active, well-formed row; drops inactive + id-less.
 $GLOBALS['ss_store'] = [];
+$GLOBALS['ss_lock']  = [];
 $client = new FakeLockerClient( [ $active, $inactive, $idless ] );
 $out = LockerRepository::all( $client );
 assert_true( is_array( $out ), 'all: returns array' );
@@ -83,14 +93,25 @@ assert_same( 1, $client->calls, 'cache: no second upstream call' );
 
 // 3) Empty list -> [] and is NOT cached (a transient blip must not pin "no lockers").
 $GLOBALS['ss_store'] = [];
+$GLOBALS['ss_lock']  = [];
 $emptyClient = new FakeLockerClient( [] );
 $out = LockerRepository::all( $emptyClient );
 assert_same( [], $out, 'empty: returns []' );
 assert_true( false === get_transient( 'webbership_ss_lockers' ), 'empty: nothing cached' );
 // A subsequent call with a now-populated client returns the lockers (no stale empty cache).
+$GLOBALS['ss_lock'] = []; // simulates the prior single-flight lock having expired by now
 $populated = new FakeLockerClient( [ $active ] );
 $out = LockerRepository::all( $populated );
 assert_same( 1, count( $out ), 'empty-then-populated: lockers now returned' );
 assert_same( 1, $populated->calls, 'empty-then-populated: upstream consulted (empty not cached)' );
+
+// 4) Single-flight: a held lock on a cold cache short-circuits to [] without hitting
+//    the client at all (the concurrent request that lost the race for the upstream call).
+$GLOBALS['ss_store'] = [];
+$GLOBALS['ss_lock']  = [ 'webbership_ss_lockers_lock' => true ];
+$contended = new FakeLockerClient( [ $active ] );
+$out = LockerRepository::all( $contended );
+assert_same( [], $out, 'locked: returns [] without fetching' );
+assert_same( 0, $contended->calls, 'locked: upstream not called while another request holds the lock' );
 
 echo "smoke-locker-repository: all assertions passed\n";

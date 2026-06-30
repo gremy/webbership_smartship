@@ -42,8 +42,10 @@ namespace {
     public function get_items() { return $this->d['items'] ?? []; }
   }
   class FakeItem {
-    private $p; public function __construct( $p ) { $this->p = $p; }
+    private $p; private $q;
+    public function __construct( $p, $q = 1 ) { $this->p = $p; $this->q = $q; }
     public function get_product() { return $this->p; }
+    public function get_quantity() { return $this->q; }
   }
   class FakeProduct {
     private $w; public function __construct( $w ) { $this->w = $w; }
@@ -87,6 +89,11 @@ namespace {
   $o5 = new FakeOrder( [ 'num' => '5', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '' ) ), new FakeItem( new FakeProduct( '0.3' ) ) ] ] );
   $c5 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o5 );
   assert_same( 1.0, $c5['weight'], 'missing weight contributes 0, floors to 1kg' );
+
+  // content: weight is multiplied by item quantity, not just per-line product weight.
+  $o6 = new FakeOrder( [ 'num' => '6', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '2' ), 5 ) ] ] );
+  $c6 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o6 );
+  assert_same( 10.0, $c6['weight'], 'weight multiplies per-unit weight by quantity' );
 
   echo "smoke-awb-payload: all assertions passed\n";
 }

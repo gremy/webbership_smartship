@@ -123,6 +123,15 @@ final class EasyBoxOrder {
       return null;
     }
 
+    // Cross-check against the cached real locker list: a structurally-valid but
+    // fabricated id must not be accepted. Cache-only (no live API call here) so
+    // checkout validation never blocks on a network round-trip — a cold cache
+    // just skips this extra check rather than failing checkout.
+    $known = get_transient( LockerRepository::CACHE_KEY );
+    if ( is_array( $known ) && ! in_array( $id, array_column( $known, 'id' ), true ) ) {
+      return null;
+    }
+
     // name/address/city must be strings (reject arrays/objects -> no "Array" coercion), then sanitize.
     foreach ( [ 'name', 'address', 'city' ] as $f ) {
       if ( ! isset( $data[ $f ] ) || ! is_string( $data[ $f ] ) ) {
