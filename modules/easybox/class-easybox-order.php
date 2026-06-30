@@ -32,7 +32,7 @@ final class EasyBoxOrder {
       return;
     }
     if ( null === $this->parse_locker() ) {
-      $errors->add( 'webbership_ss_locker', __( 'Please choose an EasyBox locker on the map.', 'webbership-smartship' ) );
+      $errors->add( 'webbership_ss_locker', __( 'Please choose an EasyBox locker for your delivery.', 'webbership-smartship' ) );
     }
   }
 

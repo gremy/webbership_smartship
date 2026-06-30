@@ -22,7 +22,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     $this->id                 = EasyBoxPricing::METHOD_ID;
     $this->instance_id        = absint( $instance_id );
     $this->method_title       = __( 'EasyBox locker (SameDay)', 'webbership-smartship' );
-    $this->method_description = __( 'Locker delivery priced from the live SameDay rate. The customer picks a locker on a map at checkout.', 'webbership-smartship' );
+    $this->method_description = __( 'Locker delivery, priced from the live SameDay rate. Customers choose their locker on a map at checkout.', 'webbership-smartship' );
     $this->supports           = [ 'shipping-zones', 'instance-settings', 'instance-settings-modal' ];
     $this->init();
   }
@@ -48,7 +48,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
         'title'       => __( 'Price factor (%)', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => '80',
-        'description' => __( 'Percent of the SameDay home rate. 80 = 20% cheaper (measured default).', 'webbership-smartship' ),
+        'description' => __( 'Percent of the live SameDay home rate. 80 means 20% off — the measured EasyBox discount.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'fallback_amount' => [

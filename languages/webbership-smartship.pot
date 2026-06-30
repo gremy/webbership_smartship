@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-30T12:46:46+00:00\n"
+"POT-Creation-Date: 2026-06-30T12:49:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -392,7 +392,7 @@ msgid "EasyBox locker (SameDay)"
 msgstr ""
 
 #: modules/easybox/class-easybox-method.php:25
-msgid "Locker delivery priced from the live SameDay rate. The customer picks a locker on a map at checkout."
+msgid "Locker delivery, priced from the live SameDay rate. Customers choose their locker on a map at checkout."
 msgstr ""
 
 #: modules/easybox/class-easybox-method.php:44
@@ -404,7 +404,7 @@ msgid "Price factor (%)"
 msgstr ""
 
 #: modules/easybox/class-easybox-method.php:51
-msgid "Percent of the SameDay home rate. 80 = 20% cheaper (measured default)."
+msgid "Percent of the live SameDay home rate. 80 means 20% off — the measured EasyBox discount."
 msgstr ""
 
 #: modules/easybox/class-easybox-method.php:58
@@ -448,5 +448,5 @@ msgid "EasyBox is not configured."
 msgstr ""
 
 #: modules/easybox/class-easybox-order.php:35
-msgid "Please choose an EasyBox locker on the map."
+msgid "Please choose an EasyBox locker for your delivery."
 msgstr ""
