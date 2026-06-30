@@ -107,21 +107,40 @@ final class EasyBoxOrder {
       return null;
     }
 
-    // id must be a positive integer (reject floats, strings like "abc", 0, negatives).
+    // id must be a CANONICAL positive integer: a real int, or a digit string that
+    // round-trips through (int) — this rejects floats, "abc", "1e3", "0", negatives,
+    // leading zeros ("01"->1), and overflow ("999…"-> PHP_INT_MAX), which would
+    // silently become a *different* id.
     $id_raw = $data['id'] ?? null;
-    if ( ! is_int( $id_raw ) && ! ( is_string( $id_raw ) && ctype_digit( $id_raw ) ) ) {
+    if ( is_int( $id_raw ) ) {
+      $id = $id_raw;
+    } elseif ( is_string( $id_raw ) && ctype_digit( $id_raw ) && (string) (int) $id_raw === $id_raw ) {
+      $id = (int) $id_raw;
+    } else {
       return null;
     }
-    $id = (int) $id_raw;
     if ( $id <= 0 ) {
       return null;
     }
 
-    $name    = sanitize_text_field( (string) ( $data['name'] ?? '' ) );
-    $address = sanitize_text_field( (string) ( $data['address'] ?? '' ) );
-    $city    = sanitize_text_field( (string) ( $data['city'] ?? '' ) );
+    // name/address/city must be strings (reject arrays/objects -> no "Array" coercion), then sanitize.
+    foreach ( [ 'name', 'address', 'city' ] as $f ) {
+      if ( ! isset( $data[ $f ] ) || ! is_string( $data[ $f ] ) ) {
+        return null;
+      }
+    }
+    $name    = sanitize_text_field( $data['name'] );
+    $address = sanitize_text_field( $data['address'] );
+    $city    = sanitize_text_field( $data['city'] );
     if ( '' === $name || '' === $address || '' === $city ) {
       return null;
+    }
+
+    // lat/lng optional, but if present must be numeric scalars (reject "abc"/arrays).
+    foreach ( [ 'lat', 'lng' ] as $f ) {
+      if ( isset( $data[ $f ] ) && ! is_numeric( $data[ $f ] ) ) {
+        return null;
+      }
     }
 
     return [

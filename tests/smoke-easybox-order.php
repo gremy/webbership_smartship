@@ -127,6 +127,32 @@ $errs = new FakeErrors();
 $order->validate( $data, $errs );
 assert_same( 1, count( $errs->errors ), 'validate: non-int id -> error' );
 
+// Stricter trust-boundary edges: leading-zero / overflow / float / scientific id,
+// non-string text field, non-numeric lat/lng -> all rejected (no coercion).
+$bad = array(
+  'leading-zero id' => array( 'id' => '01', 'name' => 'X', 'city' => 'Y', 'address' => 'Z' ),
+  'overflow id'     => array( 'id' => '999999999999999999999999', 'name' => 'X', 'city' => 'Y', 'address' => 'Z' ),
+  'float id'        => array( 'id' => 1.5, 'name' => 'X', 'city' => 'Y', 'address' => 'Z' ),
+  'scientific id'   => array( 'id' => '1e3', 'name' => 'X', 'city' => 'Y', 'address' => 'Z' ),
+  'array name'      => array( 'id' => 5, 'name' => array( 'x' ), 'city' => 'Y', 'address' => 'Z' ),
+  'non-numeric lat' => array( 'id' => 5, 'name' => 'X', 'city' => 'Y', 'address' => 'Z', 'lat' => 'abc' ),
+  'array lng'       => array( 'id' => 5, 'name' => 'X', 'city' => 'Y', 'address' => 'Z', 'lng' => array() ),
+);
+foreach ( $bad as $label => $payload ) {
+  reset_env();
+  $_POST['webbership_ss_locker'] = json_encode( $payload );
+  $errs = new FakeErrors();
+  $order->validate( $data, $errs );
+  assert_same( 1, count( $errs->errors ), 'validate: rejects ' . $label );
+}
+
+// A canonical digit-string id IS accepted (no false negatives).
+reset_env();
+$_POST['webbership_ss_locker'] = json_encode( array( 'id' => '42', 'name' => 'X', 'city' => 'Y', 'address' => 'Z' ) );
+$errs = new FakeErrors();
+$order->validate( $data, $errs );
+assert_same( 0, count( $errs->errors ), 'validate: canonical digit-string id "42" accepted' );
+
 // Missing required field (no address).
 reset_env();
 $_POST['webbership_ss_locker'] = json_encode( [ 'id' => 5, 'name' => 'X', 'city' => 'Y' ] );
