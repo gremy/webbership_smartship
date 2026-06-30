@@ -1,57 +1,57 @@
-# Copyright (C) 2026 WEBBERSHIP Coffee
+# Copyright (C) 2026 WEBBERSHIP SRL
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: WEBBERSHIP SmartShip 0.1.0\n"
+"Project-Id-Version: Webbership SmartShip 0.1.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/webbership-smartship\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-29T18:04:04+00:00\n"
+"POT-Creation-Date: 2026-06-30T08:03:22+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
 
 #. Plugin Name of the plugin
 #: webbership-smartship.php
-msgid "WEBBERSHIP SmartShip"
+msgid "Webbership SmartShip"
 msgstr ""
 
 #. Plugin URI of the plugin
 #: webbership-smartship.php
-msgid "https://github.com/gremy/webbership"
+msgid "https://github.com/gremy/webbership-smartship"
 msgstr ""
 
 #. Description of the plugin
 #: webbership-smartship.php
-msgid "SmartShip.ro courier integration for WooCommerce: live checkout rates, AWB issuance, and SameDay EasyBox locker delivery."
+msgid "SmartShip.ro courier integration for WooCommerce: live checkout rates and AWB issuance."
 msgstr ""
 
 #. Author of the plugin
 #: webbership-smartship.php
-msgid "WEBBERSHIP Coffee"
+msgid "WEBBERSHIP SRL"
 msgstr ""
 
 #: includes/Api/class-smartship-client.php:100
 msgid "SmartShip did not confirm the cancellation."
 msgstr ""
 
-#: includes/Api/class-smartship-client.php:121
+#: includes/Api/class-smartship-client.php:122
 msgid "SmartShip did not return a PDF."
 msgstr ""
 
-#: includes/Api/class-smartship-client.php:168
+#: includes/Api/class-smartship-client.php:169
 msgid "Unexpected response from SmartShip."
 msgstr ""
 
-#: includes/Api/class-smartship-client.php:215
+#: includes/Api/class-smartship-client.php:216
 msgid "SmartShip requires an IBAN for cash-on-delivery. Add it in the plugin settings."
 msgstr ""
 
 #. translators: %d: SmartShip in-body status code.
-#: includes/Api/class-smartship-client.php:224
+#: includes/Api/class-smartship-client.php:225
 #, php-format
 msgid "SmartShip returned status %d."
 msgstr ""
@@ -62,57 +62,74 @@ msgstr ""
 
 #: includes/Settings/class-settings.php:83
 #: includes/Settings/class-settings.php:84
-#: includes/Settings/class-settings.php:124
+#: includes/Settings/class-settings.php:132
+#: modules/checkout-rates/class-shipping-method.php:52
 msgid "SmartShip"
 msgstr ""
 
-#: includes/Settings/class-settings.php:120
+#: includes/Settings/class-settings.php:118
+msgid "IBAN looks invalid — expected RO + 22 characters."
+msgstr ""
+
+#: includes/Settings/class-settings.php:128
 msgid "You do not have permission to view this page."
 msgstr ""
 
-#: includes/Settings/class-settings.php:132
+#: includes/Settings/class-settings.php:134
+msgid "Connect your SmartShip.ro account below. Then turn on live checkout rates under WooCommerce → Settings → Shipping (add the \"SmartShip Live Rates\" method to a zone), and issue AWBs from the \"SmartShip AWB\" box on each order."
+msgstr ""
+
+#: includes/Settings/class-settings.php:143
 msgid "SmartShip connection OK."
 msgstr ""
 
 #. translators: %s: error message from SmartShip.
-#: includes/Settings/class-settings.php:135
+#: includes/Settings/class-settings.php:146
 #, php-format
 msgid "SmartShip connection failed: %s"
 msgstr ""
 
-#: includes/Settings/class-settings.php:146
+#: includes/Settings/class-settings.php:157
 msgid "API key"
 msgstr ""
 
-#: includes/Settings/class-settings.php:151
+#: includes/Settings/class-settings.php:162
 msgid "Defined in wp-config.php (WEBBERSHIP_SMARTSHIP_API_KEY); the database value is ignored."
 msgstr ""
 
-#: includes/Settings/class-settings.php:162
-msgid "The stored key is hidden. Leave blank to keep the current key."
+#: includes/Settings/class-settings.php:173
+msgid "Find your key in your SmartShip.ro account under API access. The stored key is hidden — leave this blank to keep the current one. After saving, use \"Test connection\" below to verify it."
 msgstr ""
 
-#: includes/Settings/class-settings.php:168
+#: includes/Settings/class-settings.php:179
 msgid "Default sender"
 msgstr ""
 
-#: includes/Settings/class-settings.php:184
+#: includes/Settings/class-settings.php:194
+msgid "The pickup address printed on AWBs and used as the rate origin. Add or edit senders in your SmartShip.ro account."
+msgstr ""
+
+#: includes/Settings/class-settings.php:196
 msgid "Save a valid API key first, then reload to choose a sender."
 msgstr ""
 
-#: includes/Settings/class-settings.php:189
+#: includes/Settings/class-settings.php:201
 msgid "IBAN (for cash-on-delivery)"
 msgstr ""
 
-#: includes/Settings/class-settings.php:195
+#: includes/Settings/class-settings.php:205
+msgid "Only used for cash-on-delivery (ramburs) orders. SmartShip requires the payout IBAN on every COD shipment, and its API cannot read the one saved on your SmartShip account — so enter the same IBAN here. Leave blank if you do not ship cash-on-delivery."
+msgstr ""
+
+#: includes/Settings/class-settings.php:210
 msgid "Debug logging"
 msgstr ""
 
-#: includes/Settings/class-settings.php:199
+#: includes/Settings/class-settings.php:214
 msgid "Log SmartShip API calls to WooCommerce → Status → Logs."
 msgstr ""
 
-#: includes/Settings/class-settings.php:209
+#: includes/Settings/class-settings.php:224
 msgid "Test connection"
 msgstr ""
 
@@ -121,85 +138,97 @@ msgid "SmartShip AWB"
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:55
-#: modules/awb/admin/class-awb-metabox.php:74
-#: modules/awb/admin/class-awb-metabox.php:100
-#: modules/awb/admin/class-awb-metabox.php:112
-#: modules/awb/admin/class-awb-metabox.php:124
+#: modules/awb/admin/class-awb-metabox.php:79
+#: modules/awb/admin/class-awb-metabox.php:108
+#: modules/awb/admin/class-awb-metabox.php:120
+#: modules/awb/admin/class-awb-metabox.php:132
 #: modules/awb/admin/class-awb-print.php:30
 msgid "Forbidden."
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:57
-#: modules/awb/admin/class-awb-metabox.php:76
-#: modules/awb/admin/class-awb-metabox.php:114
-#: modules/awb/admin/class-awb-metabox.php:126
+#: modules/awb/admin/class-awb-metabox.php:81
+#: modules/awb/admin/class-awb-metabox.php:122
+#: modules/awb/admin/class-awb-metabox.php:134
 #: modules/awb/admin/class-awb-print.php:35
 msgid "Order not found."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:68
+#: modules/awb/admin/class-awb-metabox.php:73
 msgid "Estimate failed."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:78
+#: modules/awb/admin/class-awb-metabox.php:83
 msgid "Choose a courier."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:85
+#: modules/awb/admin/class-awb-metabox.php:86
+msgid "Resolve the destination city first."
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:93
 msgid "AWB issue failed."
 msgstr ""
 
 #. translators: 1: AWB number, 2: courier
-#: modules/awb/admin/class-awb-metabox.php:92
+#: modules/awb/admin/class-awb-metabox.php:100
 #, php-format
 msgid "SmartShip AWB %1$s issued (%2$s)."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:103
+#: modules/awb/admin/class-awb-metabox.php:111
 msgid "Could not load cities."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:116
-#: modules/awb/admin/class-awb-metabox.php:128
+#: modules/awb/admin/class-awb-metabox.php:124
+#: modules/awb/admin/class-awb-metabox.php:136
 #: modules/awb/admin/class-awb-print.php:37
 msgid "No AWB on this order."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:118
+#: modules/awb/admin/class-awb-metabox.php:126
 msgid "Status unavailable."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:135
+#: modules/awb/admin/class-awb-metabox.php:143
 #, php-format
 msgid "SmartShip AWB %s removed from this order. If it was already sent to the courier, cancel it in the SmartShip dashboard too."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:137
+#: modules/awb/admin/class-awb-metabox.php:145
 msgid "AWB removed. Cancel it in the SmartShip dashboard if it was already submitted."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:166
+#: modules/awb/admin/class-awb-metabox.php:175
 msgid "AWB:"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:167
+#: modules/awb/admin/class-awb-metabox.php:178
 msgid "Print A4"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:168
+#: modules/awb/admin/class-awb-metabox.php:179
 msgid "Print A6"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:169
+#: modules/awb/admin/class-awb-metabox.php:180
 msgid "Refresh tracking"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:170
+#: modules/awb/admin/class-awb-metabox.php:181
 msgid "Cancel AWB"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:173
+#: modules/awb/admin/class-awb-metabox.php:182
+msgid "Cancel removes the AWB from this order. If it was already handed to the courier, cancel it in the SmartShip dashboard too."
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:185
+msgid "Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip."
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:186
 msgid "Estimate"
 msgstr ""
 
@@ -209,4 +238,85 @@ msgstr ""
 
 #: modules/awb/admin/class-awb-print.php:44
 msgid "SmartShip did not return a valid PDF."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:29
+msgid "SmartShip Live Rates"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:30
+msgid "Live courier rates from SmartShip, with a fallback flat rate."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:50
+msgid "Method title"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:53
+msgid "Heading shown above the courier choices at checkout."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:57
+msgid "Couriers to offer"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:62
+msgid "Pick which couriers customers may choose. Leave empty to offer every courier SmartShip returns for the destination."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:66
+msgid "Courier label overrides"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:69
+msgid "Rename couriers at checkout. One per line as courier_id|Custom label (e.g. 16|Curier rapid). The IDs are shown in brackets in the \"Couriers to offer\" list above."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:73
+msgid "Markup"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:76
+msgid "None"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:76
+msgid "Flat amount"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:76
+msgid "Percent"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:77
+msgid "Optionally add a handling fee on top of each live rate."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:81
+msgid "Markup amount"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:84
+msgid "With \"Flat amount\", the fee added in your store currency. With \"Percent\", the percentage added to each rate."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:88
+msgid "Fallback flat rate"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:91
+msgid "Flat price charged when live rates cannot be fetched (SmartShip slow or down, or the address is outside Romania)."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:95
+msgid "Fallback label"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:97
+#: modules/checkout-rates/class-shipping-method.php:120
+msgid "Shipping"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:98
+msgid "Label shown to the customer for the fallback flat rate."
 msgstr ""

@@ -130,6 +130,9 @@ final class Settings {
     ?>
     <div class="wrap">
       <h1><?php echo esc_html__( 'SmartShip', 'webbership-smartship' ); ?></h1>
+      <p class="description" style="max-width:46em">
+        <?php echo esc_html__( 'Connect your SmartShip.ro account below. Then turn on live checkout rates under WooCommerce → Settings → Shipping (add the "SmartShip Live Rates" method to a zone), and issue AWBs from the "SmartShip AWB" box on each order.', 'webbership-smartship' ); ?>
+      </p>
       <?php
       if ( isset( $_GET['webbership_ss_test'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only status flag
         $ok = 'ok' === sanitize_key( wp_unslash( $_GET['webbership_ss_test'] ) );
@@ -167,7 +170,7 @@ final class Settings {
                   autocomplete="new-password"
                   class="regular-text" />
                 <p class="description">
-                  <?php echo esc_html__( 'The stored key is hidden. Leave blank to keep the current key.', 'webbership-smartship' ); ?>
+                  <?php echo esc_html__( 'Find your key in your SmartShip.ro account under API access. The stored key is hidden — leave this blank to keep the current one. After saving, use "Test connection" below to verify it.', 'webbership-smartship' ); ?>
                 </p>
               <?php endif; ?>
             </td>
@@ -188,6 +191,7 @@ final class Settings {
                     <option value="<?php echo esc_attr( (string) $sid ); ?>" <?php selected( $current_sender, $sid ); ?>><?php echo esc_html( $lbl ); ?></option>
                   <?php endforeach; ?>
                 </select>
+                <p class="description"><?php echo esc_html__( 'The pickup address printed on AWBs and used as the rate origin. Add or edit senders in your SmartShip.ro account.', 'webbership-smartship' ); ?></p>
               <?php else : ?>
                 <p class="description"><?php echo esc_html__( 'Save a valid API key first, then reload to choose a sender.', 'webbership-smartship' ); ?></p>
               <?php endif; ?>
@@ -196,7 +200,10 @@ final class Settings {
           <tr>
             <th scope="row"><label for="webbership_smartship_iban"><?php echo esc_html__( 'IBAN (for cash-on-delivery)', 'webbership-smartship' ); ?></label></th>
             <td>
-              <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="webbership_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" />
+              <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="webbership_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" placeholder="RO00 BANK 0000 0000 0000 0000" />
+              <p class="description" style="max-width:46em">
+                <?php echo esc_html__( 'Only used for cash-on-delivery (ramburs) orders. SmartShip requires the payout IBAN on every COD shipment, and its API cannot read the one saved on your SmartShip account — so enter the same IBAN here. Leave blank if you do not ship cash-on-delivery.', 'webbership-smartship' ); ?>
+              </p>
             </td>
           </tr>
           <tr>

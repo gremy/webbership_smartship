@@ -179,8 +179,10 @@ final class AwbMetabox {
       echo '<a class="button" target="_blank" href="' . esc_url( AwbPrint::url( (int) $order->get_id(), 'A6' ) ) . '">' . esc_html__( 'Print A6', 'webbership-smartship' ) . '</a></p>';
       echo '<p><button type="button" class="button webbership-ss-track">' . esc_html__( 'Refresh tracking', 'webbership-smartship' ) . '</button> ';
       echo '<button type="button" class="button webbership-ss-cancel">' . esc_html__( 'Cancel AWB', 'webbership-smartship' ) . '</button></p>';
+      echo '<p class="description">' . esc_html__( 'Cancel removes the AWB from this order. If it was already handed to the courier, cancel it in the SmartShip dashboard too.', 'webbership-smartship' ) . '</p>';
       echo '<div class="webbership-ss-tracking"></div>';
     } else {
+      echo '<p class="description">' . esc_html__( 'Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip.', 'webbership-smartship' ) . '</p>';
       echo '<button type="button" class="button webbership-ss-estimate">' . esc_html__( 'Estimate', 'webbership-smartship' ) . '</button>';
       echo '<div class="webbership-ss-couriers"></div>';
       echo '<div class="webbership-ss-msg"></div>';
