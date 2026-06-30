@@ -82,7 +82,7 @@ final class EasyBoxModule extends Module {
    * Rendered hidden; the picker JS reveals it only when EasyBox is chosen.
    */
   public function render_picker(): void {
-    echo '<tr class="webbership-ss-easybox-row"><td colspan="2">';
+    echo '<tr class="webbership-ss-easybox-row" hidden><td colspan="2">';
     echo '<div class="webbership-ss-easybox" hidden></div>';
     echo '<input type="hidden" name="webbership_ss_locker" id="webbership_ss_locker" value="">';
     echo '</td></tr>';

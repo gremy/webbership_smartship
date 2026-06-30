@@ -86,6 +86,11 @@ final class AwbMetabox {
     if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'webbership-smartship' ) ], 403 ); }
     $order = $this->order_from_request();
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'webbership-smartship' ) ], 404 ); }
+    // EasyBox orders must use the manual hand-off (SmartShip has no locker AWB on the
+    // partner API) — never auto-create a home-delivery AWB for one at the server boundary.
+    if ( '' !== (string) $order->get_meta( '_webbership_smartship_easybox_id' ) ) {
+      wp_send_json_error( [ 'message' => __( 'This is an EasyBox order — create the locker AWB in SmartShip and paste the number back here.', 'webbership-smartship' ) ] );
+    }
     $courier_id = isset( $_POST['courier_id'] ) ? absint( $_POST['courier_id'] ) : 0;
     if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'webbership-smartship' ) ] ); }
 

@@ -56,13 +56,15 @@
   }
 
   function hidePicker() {
-    $box().prop( 'hidden', true );
+    // Hide the whole review-table row, not just the inner div, so a non-EasyBox
+    // checkout doesn't get an empty padded row.
+    $box().prop( 'hidden', true ).closest( '.webbership-ss-easybox-row' ).prop( 'hidden', true );
   }
 
   function showPicker() {
     var $b = $box();
     if ( ! $b.length ) { return; }
-    $b.prop( 'hidden', false );
+    $b.prop( 'hidden', false ).closest( '.webbership-ss-easybox-row' ).prop( 'hidden', false );
     // `updated_checkout` re-renders the review table, replacing our container with
     // a fresh empty one — so trust the live DOM, not the `built` flag. Re-render
     // only when the map container is actually gone.
