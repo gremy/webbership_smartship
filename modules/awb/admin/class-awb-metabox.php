@@ -61,6 +61,7 @@ final class AwbMetabox {
         'issuing'         => __( 'Issuing…', 'webbership-smartship' ),
         'cancelConfirm'   => __( 'Cancel this AWB?', 'webbership-smartship' ),
         'loading'         => __( 'Loading…', 'webbership-smartship' ),
+        'sender'          => __( 'Sender:', 'webbership-smartship' ),
       ],
     ] );
   }
@@ -78,12 +79,13 @@ final class AwbMetabox {
 
     $client   = new SmartShipClient( Settings::api_key() );
     $resolved = $this->resolve_for( $order );
+    $senders  = (array) ( $client->get_senders()['senders'] ?? [] );
+    $sender   = self::pick_sender( $senders, absint( $_POST['sender_id'] ?? 0 ) );
     // No city id (resolver not confident, no override posted) → /cost with city:0
     // would just fail. Return needs_city so the JS renders the city picker instead.
     if ( empty( $resolved['city_id'] ) ) {
-      wp_send_json_success( [ 'costs' => [], 'resolved' => $resolved, 'needs_city' => true ] );
+      wp_send_json_success( [ 'costs' => [], 'resolved' => $resolved, 'needs_city' => true, 'senders' => self::senders_for_js( $senders ), 'sender_id' => (int) ( $sender['id'] ?? 0 ) ] );
     }
-    $sender   = $this->chosen_sender( $client );
     $payload  = [
       'recipient' => AwbPayload::recipient_from_order( $order, $resolved ),
       'sender'    => AwbPayload::sender_from_account( $sender ),
@@ -91,7 +93,7 @@ final class AwbMetabox {
     ];
     $res = $client->cost( $payload );
     if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Estimate failed.', 'webbership-smartship' ), 'errors' => $res['errors'] ?? [] ] ); }
-    wp_send_json_success( [ 'costs' => $res['costs'] ?? ( $res['response']['costs'] ?? [] ), 'resolved' => $resolved ] );
+    wp_send_json_success( [ 'costs' => $res['costs'] ?? ( $res['response']['costs'] ?? [] ), 'resolved' => $resolved, 'senders' => self::senders_for_js( $senders ), 'sender_id' => (int) ( $sender['id'] ?? 0 ) ] );
   }
 
   public function ajax_issue(): void {
@@ -111,7 +113,7 @@ final class AwbMetabox {
     if ( empty( $resolved['city_id'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'webbership-smartship' ) ] ); }
 
     $client  = new SmartShipClient( Settings::api_key() );
-    $sender  = $this->chosen_sender( $client );
+    $sender  = self::pick_sender( (array) ( $client->get_senders()['senders'] ?? [] ), absint( $_POST['sender_id'] ?? 0 ) );
     $payload = AwbPayload::build( $order, $resolved, $sender, $courier_id );
     $res     = $client->create_awb( $payload );
     if ( empty( $res['ok'] ) ) {
@@ -201,13 +203,25 @@ final class AwbMetabox {
     return $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ) );
   }
 
-  private function chosen_sender( SmartShipClient $client ): array {
-    $res = $client->get_senders();
-    $id  = Settings::sender_id();
-    foreach ( (array) ( $res['senders'] ?? [] ) as $s ) {
-      if ( (int) ( $s['id'] ?? 0 ) === $id ) { return $s; }
+  /**
+   * The sender (pickup point) for this shipment: the per-order choice posted from
+   * the metabox wins; else the settings default; else the account's first sender.
+   */
+  public static function pick_sender( array $senders, int $requested ): array {
+    foreach ( [ $requested, Settings::sender_id() ] as $want ) {
+      foreach ( $want ? $senders : [] as $s ) {
+        if ( (int) ( $s['id'] ?? 0 ) === $want ) { return (array) $s; }
+      }
     }
-    return (array) ( ( $res['senders'] ?? [] )[0] ?? [] );
+    return (array) ( $senders[0] ?? [] );
+  }
+
+  /** id + label only — all the metabox dropdown needs. */
+  private static function senders_for_js( array $senders ): array {
+    return array_values( array_map( static fn( $s ) => [
+      'id'    => (int) ( $s['id'] ?? 0 ),
+      'label' => sanitize_text_field( trim( ( $s['nume'] ?? '' ) . ' — ' . ( $s['localitate'] ?? '' ), ' —' ) ),
+    ], $senders ) );
   }
 
   public function render( $post_or_order ): void {
@@ -231,6 +245,7 @@ final class AwbMetabox {
     } else {
       echo '<p class="description">' . esc_html__( 'Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip.', 'webbership-smartship' ) . '</p>';
       echo '<button type="button" class="button webbership-ss-estimate">' . esc_html__( 'Estimate', 'webbership-smartship' ) . '</button>';
+      echo '<div class="webbership-ss-sender"></div>';
       echo '<div class="webbership-ss-couriers"></div>';
       echo '<div class="webbership-ss-msg"></div>';
     }

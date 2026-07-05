@@ -4,13 +4,17 @@
 
   // Chosen override (set when the merchant picks a city); threaded into re-estimate + issue.
   var override = { county_id: 0, city_id: 0 };
+  // Per-order sender (pickup point) choice; 0 = the settings default.
+  var senderId = 0;
 
   function runEstimate() {
     var $msg = $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.estimating );
     var data = { action: 'webbership_smartship_estimate', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
+    if ( senderId ) { data.sender_id = senderId; }
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
+      renderSenderPicker( r.data.senders || [], r.data.sender_id || 0 );
       // No city resolved yet: show the picker, withhold couriers/Issue until re-estimate.
       if ( r.data.needs_city ) {
         $( '.webbership-ss-couriers' ).empty();
@@ -23,6 +27,25 @@
       maybeRenderCityPicker( r.data.resolved );
     } );
   }
+
+  // Sender picker: only shown when the SmartShip account has more than one pickup point.
+  function renderSenderPicker( senders, chosen ) {
+    var $wrap = $( '.webbership-ss-sender' );
+    if ( ! $wrap.length || senders.length < 2 ) { return; }
+    var $sel = $( '<select class="webbership-ss-sender-select"/>' );
+    senders.forEach( function ( s ) {
+      // s.label is an API string → insert as text only, never as HTML.
+      $sel.append( $( '<option/>' ).val( s.id ).text( s.label ).prop( 'selected', s.id === chosen ) );
+    } );
+    $wrap.empty().append( $( '<label/>' ).text( WebbershipSmartShip.i18n.sender + ' ' ).append( $sel ) );
+  }
+
+  $( document ).on( 'change', '.webbership-ss-sender-select', function () {
+    senderId = parseInt( $( this ).val(), 10 ) || 0;
+    // New origin → the prior quotes are stale; re-estimate with the chosen sender.
+    $( '.webbership-ss-couriers' ).empty();
+    runEstimate();
+  } );
 
   function renderCouriers( costs ) {
     var $c = $( '.webbership-ss-couriers' ).empty();
@@ -102,6 +125,7 @@
     $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.issuing );
     var data = { action: 'webbership_smartship_issue', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId(), courier_id: courier };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
+    if ( senderId ) { data.sender_id = senderId; }
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       window.location.reload();
