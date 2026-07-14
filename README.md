@@ -25,7 +25,9 @@ through the official SmartShip partner API.
   hand-off from the order's SmartShip metabox rather than automatic.
 - **WooCommerce Fulfillments provider** — registers SmartShip as a shipping provider so
   fulfillments show the SmartShip tracking URL and courier name (e.g. in the shipped-order
-  email).
+  email). An AWB pasted into the fulfillment drawer, or into the order's SmartShip metabox
+  (available for every order, not just EasyBox hand-offs), is auto-detected and verified
+  against the SmartShip API rather than guessed from its format.
 - **Couriers**: Cargus, SameDay, FanCourier, DragonStar, DPD, PTT Express, SmartShip
   Delivery (whatever your SmartShip account offers for the route).
 - Translation-ready (`webbership-smartship` text domain, `.pot` included), HPOS-compatible,

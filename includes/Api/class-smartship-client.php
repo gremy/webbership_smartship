@@ -82,8 +82,8 @@ final class SmartShipClient {
     return $this->request( 'POST', '/awb/new', [ 'body' => $body ] );
   }
 
-  public function get_awb_status( string $awb ): array {
-    return $this->request( 'GET', '/awb/status/' . rawurlencode( $awb ) );
+  public function get_awb_status( string $awb, int $timeout = self::TIMEOUT ): array {
+    return $this->request( 'GET', '/awb/status/' . rawurlencode( $awb ), [ 'timeout' => $timeout ] );
   }
 
   /**

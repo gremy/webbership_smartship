@@ -10,6 +10,7 @@ use Webbership\Smartship\Support\CityResolver;
 use Webbership\Smartship\Settings\Settings;
 use Webbership\Smartship\Modules\Awb\Data\AwbPayload;
 use Webbership\Smartship\Modules\Awb\Admin\AwbPrint;
+use Webbership\Smartship\Modules\Fulfillment\FulfillmentModule;
 
 /**
  * @package Webbership\Smartship\Modules\Awb\Admin
@@ -197,9 +198,11 @@ final class AwbMetabox {
   }
 
   /**
-   * Paste-back: store an AWB the merchant created by hand in smartship.ro (the
-   * EasyBox locker hand-off — SmartShip's V2 API can't issue locker AWBs yet).
-   * Mutates the order, so it requires the metabox nonce + edit capability.
+   * Paste-back: store an AWB the merchant created by hand in smartship.ro —
+   * either the EasyBox locker hand-off (SmartShip's V2 API can't issue locker
+   * AWBs yet) or, for any other order, one created directly in the SmartShip
+   * dashboard instead of through Estimate → Issue here. Mutates the order, so
+   * it requires the metabox nonce + edit capability.
    */
   public function ajax_set_awb(): void {
     check_ajax_referer( self::NONCE );
@@ -208,12 +211,26 @@ final class AwbMetabox {
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'webbership-smartship' ) ], 404 ); }
     $awb = sanitize_text_field( (string) ( $_POST['awb'] ?? '' ) );
     if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'Enter the AWB number.', 'webbership-smartship' ) ] ); }
-    // Meta is stored data, not UI text — keep it locale-independent so it doesn't
-    // change with the admin's language and stays consistent across orders.
-    $courier = 'SameDay EasyBox';
+
+    if ( '' !== (string) $order->get_meta( '_webbership_smartship_easybox_id' ) ) {
+      // Meta is stored data, not UI text — keep it locale-independent so it doesn't
+      // change with the admin's language and stays consistent across orders.
+      $courier = 'SameDay EasyBox';
+      $note    = sprintf( /* translators: %s: AWB number */ __( 'SmartShip EasyBox AWB %s added manually.', 'webbership-smartship' ), $awb );
+    } else {
+      // Every other order: verify with SmartShip before accepting the paste —
+      // an unrecognized AWB would silently break printing/tracking later.
+      $status = ( new FulfillmentModule() )->verified_awb_status( $awb );
+      if ( null === $status ) {
+        wp_send_json_error( [ 'message' => __( "SmartShip doesn't recognize this AWB number.", 'webbership-smartship' ) ] );
+      }
+      $courier = sanitize_text_field( FulfillmentModule::courier_from_status( $status ) );
+      $note    = sprintf( /* translators: %s: AWB number */ __( 'SmartShip AWB %s added manually.', 'webbership-smartship' ), $awb );
+    }
+
     $order->update_meta_data( '_webbership_smartship_awb', $awb );
     $order->update_meta_data( '_webbership_smartship_courier', $courier );
-    $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip EasyBox AWB %s added manually.', 'webbership-smartship' ), $awb ) );
+    $order->add_order_note( $note );
     $order->save();
     wp_send_json_success( [ 'awb' => $awb ] );
   }
@@ -336,8 +353,22 @@ final class AwbMetabox {
       echo '<div class="webbership-ss-sender"></div>';
       echo '<div class="webbership-ss-couriers"></div>';
       echo '<div class="webbership-ss-msg"></div>';
+      $this->render_paste_back();
     }
     echo '</div>';
+  }
+
+  /**
+   * Paste-back for orders that don't need the EasyBox hand-off: the merchant
+   * may have created the AWB directly in the SmartShip dashboard instead of
+   * through Estimate → Issue here. Reuses the EasyBox hand-off's input/button
+   * classes so the existing delegated JS handler (.webbership-ss-easybox-save
+   * in awb-metabox.js) picks it up unchanged — it isn't scoped to that branch.
+   */
+  private function render_paste_back(): void {
+    echo '<p class="description">' . esc_html__( 'Created the AWB in SmartShip directly? Paste it here to enable printing and tracking.', 'webbership-smartship' ) . '</p>';
+    echo '<p><input type="text" class="webbership-ss-easybox-awb" placeholder="' . esc_attr__( 'Paste AWB number', 'webbership-smartship' ) . '" /> ';
+    echo '<button type="button" class="button webbership-ss-easybox-save">' . esc_html__( 'Save AWB', 'webbership-smartship' ) . '</button></p>';
   }
 
   /**
