@@ -197,10 +197,24 @@ final class AwbMetabox {
     $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
     $city   = isset( $_POST['city_id'] ) ? absint( $_POST['city_id'] ) : 0;
     if ( $county && $city ) {
-      return [ 'county_id' => $county, 'city_id' => $city, 'confident' => true ];
+      $is_buc = 'B' === strtoupper( trim( (string) $order->get_shipping_state() ) );
+      $sector = $is_buc ? CityResolver::sector_from( ( $order->get_shipping_city() ?: $order->get_billing_city() ) . ' ' . self::address_lines( $order ) ) : '';
+      return [ 'county_id' => $county, 'city_id' => $city, 'confident' => true, 'sector' => ( '' !== $sector ? $sector : '0' ) ];
     }
     $resolver = new CityResolver( new SmartShipClient( Settings::api_key() ) );
-    return $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ) );
+    return $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ), self::address_lines( $order ) );
+  }
+
+  /**
+   * Street address lines used to source a Bucharest sector, from the SAME source
+   * (shipping vs billing) the recipient payload uses — a customer who didn't tick
+   * "ship to a different address" has the sector sitting in the billing lines.
+   */
+  private static function address_lines( $order ): string {
+    $use_shipping = (string) $order->get_shipping_address_1() !== '';
+    $a1 = $use_shipping ? $order->get_shipping_address_1() : $order->get_billing_address_1();
+    $a2 = $use_shipping ? $order->get_shipping_address_2() : $order->get_billing_address_2();
+    return trim( $a1 . ' ' . $a2 );
   }
 
   /**

@@ -42,8 +42,8 @@ final class CityResolver {
     $this->timeout = $timeout;
   }
 
-  public function resolve( string $county_code, string $city_name ): array {
-    $miss = [ 'county_id' => null, 'city_id' => null, 'confident' => false ];
+  public function resolve( string $county_code, string $city_name, string $address = '' ): array {
+    $miss = [ 'county_id' => null, 'city_id' => null, 'confident' => false, 'sector' => '0' ];
 
     $name = self::COUNTY_NAMES[ strtoupper( trim( $county_code ) ) ] ?? null;
     if ( null === $name ) {
@@ -68,42 +68,48 @@ final class CityResolver {
 
     $cities = $this->client->get_cities( $county_id, $this->timeout );
     if ( empty( $cities['ok'] ) ) {
-      return [ 'county_id' => $county_id, 'city_id' => null, 'confident' => false ];
+      return [ 'county_id' => $county_id, 'city_id' => null, 'confident' => false, 'sector' => '0' ];
     }
     $is_bucuresti = ( 'bucuresti' === $target );
-    $wanted       = self::normalize_city( $city_name, $is_bucuresti );
-
-    // In Bucuresti only a sector is a valid destination. Refuse to match a bare
-    // "Bucuresti" even if SmartShip returns a literal city row by that name.
-    if ( $is_bucuresti && 'bucuresti' === $wanted ) {
-      return [ 'county_id' => $county_id, 'city_id' => null, 'confident' => false ];
-    }
+    // In Bucuresti, WC's city text is often "Sector N" rather than the literal
+    // municipality name, but the county only ever has ONE city row ("Bucuresti")
+    // — so match against that fixed name, not the free-text sector wording.
+    $wanted = $is_bucuresti ? $target : self::normalize( $city_name );
 
     $city_id = null;
     foreach ( (array) ( $cities['cities'] ?? [] ) as $ct ) {
-      if ( isset( $ct['city'] ) && self::normalize_city( (string) $ct['city'], $is_bucuresti ) === $wanted ) {
+      if ( isset( $ct['city'] ) && self::normalize( (string) $ct['city'] ) === $wanted ) {
         $city_id = (int) $ct['id'];
         break;
       }
+    }
+
+    if ( $is_bucuresti ) {
+      // SmartShip's geo API has a single "Bucuresti" city row; the sector is a
+      // separate required field, sourced from the city text and/or street address.
+      $sector = self::sector_from( $city_name . ' ' . $address );
+      return [
+        'county_id' => $county_id,
+        'city_id'   => $city_id,
+        'confident' => ( null !== $city_id && '' !== $sector ),
+        'sector'    => $sector,
+      ];
     }
 
     return [
       'county_id' => $county_id,
       'city_id'   => $city_id,
       'confident' => ( null !== $city_id ),
+      'sector'    => '0',
     ];
   }
 
-  /**
-   * Normalize a city name for comparison. In Bucuresti, fold "sectorul N" and
-   * "sector N" together so WC's "Sector 4" matches SmartShip's "Sectorul 4".
-   */
-  private static function normalize_city( string $s, bool $is_bucuresti ): string {
-    $s = self::normalize( $s );
-    if ( $is_bucuresti ) {
-      $s = str_replace( 'sectorul', 'sector', $s );
+  /** Extract a Bucharest sector 1-6 from free text ("Sector 3", "Sectorul 3"); '' if none. */
+  public static function sector_from( string $text ): string {
+    if ( preg_match( '/sector(?:ul)?\.?\s*0*([1-6])\b/i', $text, $m ) ) {
+      return $m[1];
     }
-    return $s;
+    return '';
   }
 
   /** lowercase, strip RO diacritics, collapse whitespace. */

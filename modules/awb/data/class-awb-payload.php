@@ -37,7 +37,7 @@ final class AwbPayload {
       'city'    => isset( $resolved['city_id'] ) ? (int) $resolved['city_id'] : 0,
       'phone'   => (string) $phone,
       'country' => 'RO',
-      'sector'  => '0',
+      'sector'  => (string) ( $resolved['sector'] ?? '0' ),
     ];
   }
 

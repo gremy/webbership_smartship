@@ -30,7 +30,7 @@ final class CostService {
   public static function costs_for( array $package, $client ): ?array {
     $dest = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
 
-    $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ) );
+    $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ), (string) ( $dest['address'] ?? '' ) );
     if ( empty( $resolved['city_id'] ) ) {
       return null;
     }
@@ -55,7 +55,7 @@ final class CostService {
     }
 
     $body = [
-      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => '0' ],
+      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => (string) ( $resolved['sector'] ?? '0' ) ],
       'sender'    => $sender,
       'content'   => [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ],
     ];
