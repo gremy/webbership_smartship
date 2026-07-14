@@ -105,13 +105,31 @@ $out = LockerRepository::all( $populated );
 assert_same( 1, count( $out ), 'empty-then-populated: lockers now returned' );
 assert_same( 1, $populated->calls, 'empty-then-populated: upstream consulted (empty not cached)' );
 
-// 4) Single-flight: a held lock on a cold cache short-circuits to [] without hitting
-//    the client at all (the concurrent request that lost the race for the upstream call).
+// 4) Single-flight: a held lock on a cold cache short-circuits to null (retryable,
+//    NOT "zero lockers") without hitting the client at all (the concurrent request
+//    that lost the race for the upstream call).
 $GLOBALS['ss_store'] = [];
 $GLOBALS['ss_lock']  = [ 'webbership_ss_lockers_lock' => true ];
 $contended = new FakeLockerClient( [ $active ] );
 $out = LockerRepository::all( $contended );
-assert_same( [], $out, 'locked: returns [] without fetching' );
+assert_true( null === $out, 'locked: returns null without fetching' );
 assert_same( 0, $contended->calls, 'locked: upstream not called while another request holds the lock' );
+
+// 5) Upstream API failure (ok:false) -> null, distinct from a real empty list, and
+//    nothing is cached (so the next request retries).
+class FailingLockerClient {
+  public int $calls = 0;
+  public function get_easybox( int $t = 0 ): array {
+    $this->calls++;
+    return [ 'ok' => false, 'status' => 0, 'code' => 'transport_error', 'message' => 'down' ];
+  }
+}
+$GLOBALS['ss_store'] = [];
+$GLOBALS['ss_lock']  = [];
+$failing = new FailingLockerClient();
+$out = LockerRepository::all( $failing );
+assert_true( null === $out, 'failure: returns null, not []' );
+assert_same( 1, $failing->calls, 'failure: upstream was consulted' );
+assert_true( false === get_transient( 'webbership_ss_lockers' ), 'failure: nothing cached' );
 
 echo "smoke-locker-repository: all assertions passed\n";

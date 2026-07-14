@@ -26,6 +26,17 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) { define( 'DAY_IN_SECONDS', 86400 ); }
 function wp_remote_get( $url, $args = [] ) { return wp_remote_request( $url, $args ); }
 function wp_remote_retrieve_header( $r, $h ) { return is_array( $r ) ? ( $r['headers'][ strtolower( $h ) ] ?? '' ) : ''; }
 
+// request()/cancel_awb()/print_awb() now log via Webbership\Smartship\Logger, which
+// reads Settings — stub both, plus the WooCommerce logger they call into.
+function wp_parse_args( $args, $defaults = [] ) { return array_merge( $defaults, (array) $args ); }
+function get_option( $name, $default = false ) { return $GLOBALS['webbership_ss_options'][ $name ] ?? $default; }
+class Webbership_SS_Test_Logger {
+  public function log( $level, $message, $context ) { $GLOBALS['webbership_ss_logged'][] = [ $level, $message, $context ]; }
+}
+function wc_get_logger() { return new Webbership_SS_Test_Logger(); }
+require_once __DIR__ . '/../includes/Settings/class-settings.php';
+require_once __DIR__ . '/../includes/class-logger.php';
+
 class WP_Error {
   private $code; private $message;
   public function __construct( $code = '', $message = '' ) { $this->code = $code; $this->message = $message; }

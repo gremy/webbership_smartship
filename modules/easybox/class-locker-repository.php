@@ -18,27 +18,34 @@ defined( 'ABSPATH' ) || exit;
 final class LockerRepository {
   public const CACHE_KEY = 'webbership_ss_lockers';
 
-  /** @return array<int,array<string,mixed>> Normalized active lockers. */
-  public static function all( $client ): array {
+  /**
+   * @return array<int,array<string,mixed>>|null Normalized active lockers, or
+   *   null when the upstream fetch failed (or lost the single-flight race) — the
+   *   caller must treat null as a retryable failure, NOT as "zero lockers".
+   */
+  public static function all( $client ): ?array {
     $cached = get_transient( self::CACHE_KEY );
     if ( is_array( $cached ) ) {
       return $cached;
     }
 
     // Single-flight: on a cache miss, only the first concurrent request fetches
-    // upstream (a 20s call); the rest get an empty list for this one request rather
-    // than each blocking on their own /geolocation/easybox call. The picker UI
-    // already renders an empty list as a normal "no lockers found" state, and the
-    // next request retries once the winner's fetch has populated the real cache.
+    // upstream (a 20s call); the rest get null (retryable) for this one request
+    // rather than each blocking on their own /geolocation/easybox call. The next
+    // request retries once the winner's fetch has populated the real cache.
     // ponytail: wp_cache_add() is only atomic on a persistent object cache (Redis is
     // configured for this store); without one this lock is a same-request no-op and
     // every request still fetches, same as before this fix.
     if ( ! wp_cache_add( self::CACHE_KEY . '_lock', 1, '', 10 ) ) {
-      return [];
+      return null;
     }
 
-    $res  = $client->get_easybox();
-    $rows = ( is_array( $res ) && isset( $res['easybox'] ) && is_array( $res['easybox'] ) ) ? $res['easybox'] : [];
+    $res = $client->get_easybox();
+    if ( empty( $res['ok'] ) ) {
+      // Upstream API failure — retryable, must not be mistaken for a real empty list.
+      return null;
+    }
+    $rows = ( isset( $res['easybox'] ) && is_array( $res['easybox'] ) ) ? $res['easybox'] : [];
 
     $lockers = [];
     foreach ( $rows as $row ) {

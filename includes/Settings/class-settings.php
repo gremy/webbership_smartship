@@ -184,7 +184,8 @@ final class Settings {
             <td>
               <?php
               $current_sender = self::sender_id();
-              $senders        = self::api_key() !== '' ? ( new \Webbership\Smartship\Api\SmartShipClient( self::api_key() ) )->get_senders() : [ 'ok' => false ];
+              // Short timeout: this runs synchronously on page render, not checkout.
+              $senders        = self::api_key() !== '' ? ( new \Webbership\Smartship\Api\SmartShipClient( self::api_key() ) )->get_senders( 5 ) : [ 'ok' => false ];
               if ( ! empty( $senders['ok'] ) && ! empty( $senders['senders'] ) ) :
                 ?>
                 <select name="<?php echo esc_attr( self::OPTION ); ?>[sender_id]" id="webbership_smartship_sender">

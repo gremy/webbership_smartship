@@ -16,6 +16,14 @@ function delete_transient( $k ) { unset( $GLOBALS['ss_store'][ $k ] ); return tr
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': expected ' . var_export( $e, true ) . ', got ' . var_export( $a, true ) ); } }
 
+// The fail-cache key is now per-destination (hashed), not a fixed name — match by prefix.
+function any_fail_key_set(): bool {
+  foreach ( array_keys( $GLOBALS['ss_store'] ) as $k ) {
+    if ( str_starts_with( $k, 'webbership_ss_rate_fail_' ) ) { return true; }
+  }
+  return false;
+}
+
 require_once __DIR__ . '/../includes/Api/class-smartship-client.php';
 require_once __DIR__ . '/../includes/Support/class-city-resolver.php';
 require_once __DIR__ . '/../modules/awb/data/class-awb-payload.php';
@@ -53,6 +61,10 @@ class FakeCostClient {
     return $this->cost_result;
   }
 }
+class FakeProduct {
+  private $w; public function __construct( $w ) { $this->w = $w; }
+  public function get_weight() { return $this->w; }
+}
 class FakeNoSenderClient extends FakeCostClient {
   public function get_senders( int $t = 0 ): array { return [ 'ok' => true, 'status' => 200, 'senders' => [] ]; }
 }
@@ -89,11 +101,23 @@ $client = new FakeCostClient();
 $client->cost_result = [ 'ok' => false, 'status' => 999 ];
 $out = CostService::costs_for( $ro_pkg, $client );
 assert_true( null === $out, 'fail: null on ok=false' );
-assert_true( (bool) get_transient( 'webbership_ss_rate_fail' ), 'fail: failure-cache set' );
+assert_true( any_fail_key_set(), 'fail: failure-cache set' );
 // And the failure-cache short-circuits the next call (no /cost hit).
 $before = $client->cost_calls;
 assert_true( null === CostService::costs_for( $ro_pkg, $client ), 'fail: still null while failure-cache hot' );
 assert_same( $before, $client->cost_calls, 'fail: failure-cache short-circuits /cost' );
+
+// 4b) Per-destination scoping: a package to the SAME city but a DIFFERENT weight
+// (=> different rate-cache hash) must NOT be short-circuited by the fail-cache
+// above — one bad destination/weight combo can no longer suppress everyone else.
+$other_pkg = [
+  'destination' => [ 'country' => 'RO', 'state' => 'TM', 'city' => 'Sacalaz', 'address' => 'Str. Test 1' ],
+  'contents'    => [ [ 'data' => new FakeProduct( '5' ), 'quantity' => 1 ] ],
+];
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+$before = $client->cost_calls;
+assert_true( is_array( CostService::costs_for( $other_pkg, $client ) ), 'per-dest: different weight not blocked by other destination\'s fail-cache' );
+assert_true( $client->cost_calls > $before, 'per-dest: /cost was actually attempted' );
 
 // 5) Non-array costs in an ok response -> failure-cache + null.
 $GLOBALS['ss_store'] = [];
@@ -101,7 +125,7 @@ $client = new FakeCostClient();
 $client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => 'garbage' ];
 $out = CostService::costs_for( $ro_pkg, $client );
 assert_true( null === $out, 'non-array: null' );
-assert_true( (bool) get_transient( 'webbership_ss_rate_fail' ), 'non-array: failure-cache set' );
+assert_true( any_fail_key_set(), 'non-array: failure-cache set' );
 
 // 6) Unresolved city -> null (no /cost call).
 $GLOBALS['ss_store'] = [];

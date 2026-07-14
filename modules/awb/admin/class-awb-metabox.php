@@ -39,29 +39,38 @@ final class AwbMetabox {
     if ( ! in_array( $hook, [ 'post.php', 'woocommerce_page_wc-orders' ], true ) ) {
       return;
     }
+    // post.php is shared by every post type; only load the metabox JS on an order edit.
+    if ( 'post.php' === $hook && 'shop_order' !== get_post_type( absint( $_GET['post'] ?? 0 ) ) ) {
+      return;
+    }
     wp_enqueue_script( 'webbership-smartship-awb', WEBBERSHIP_SMARTSHIP_URL . 'assets/js/awb-metabox.js', [ 'jquery' ], WEBBERSHIP_SMARTSHIP_VERSION, true );
     wp_localize_script( 'webbership-smartship-awb', 'WebbershipSmartShip', [
       'ajax'  => admin_url( 'admin-ajax.php' ),
       'nonce' => wp_create_nonce( self::NONCE ),
       'i18n'  => [
-        'copied'          => __( 'Copied!', 'webbership-smartship' ),
-        'enterAwb'        => __( 'Enter the AWB number.', 'webbership-smartship' ),
-        'saving'          => __( 'Saving…', 'webbership-smartship' ),
-        'failed'          => __( 'Failed', 'webbership-smartship' ),
-        'estimating'      => __( 'Estimating…', 'webbership-smartship' ),
-        'pickCityReest'   => __( 'Pick the destination city, then Re-estimate.', 'webbership-smartship' ),
-        'issueAwb'        => __( 'Issue AWB', 'webbership-smartship' ),
-        'cantMatchCity'   => __( "Couldn't match the city — pick it:", 'webbership-smartship' ),
-        'selectCity'      => __( '— Select city —', 'webbership-smartship' ),
-        'reestimate'      => __( 'Re-estimate', 'webbership-smartship' ),
-        'cityChanged'     => __( 'City changed — click Re-estimate.', 'webbership-smartship' ),
-        'pickCity'        => __( 'Pick a city.', 'webbership-smartship' ),
-        'pickCourier'     => __( 'Pick a courier.', 'webbership-smartship' ),
-        'selectCityFirst' => __( 'Select the destination city first.', 'webbership-smartship' ),
-        'issuing'         => __( 'Issuing…', 'webbership-smartship' ),
-        'cancelConfirm'   => __( 'Cancel this AWB?', 'webbership-smartship' ),
-        'loading'         => __( 'Loading…', 'webbership-smartship' ),
-        'sender'          => __( 'Sender:', 'webbership-smartship' ),
+        'copied'            => __( 'Copied!', 'webbership-smartship' ),
+        'enterAwb'          => __( 'Enter the AWB number.', 'webbership-smartship' ),
+        'saving'            => __( 'Saving…', 'webbership-smartship' ),
+        'failed'            => __( 'Failed', 'webbership-smartship' ),
+        'estimating'        => __( 'Estimating…', 'webbership-smartship' ),
+        'pickCityReest'     => __( 'Pick the destination city, then Re-estimate.', 'webbership-smartship' ),
+        'issueAwb'          => __( 'Issue AWB', 'webbership-smartship' ),
+        'cantMatchCity'     => __( "Couldn't match the city — pick it:", 'webbership-smartship' ),
+        'selectCity'        => __( '— Select city —', 'webbership-smartship' ),
+        'reestimate'        => __( 'Re-estimate', 'webbership-smartship' ),
+        'cityChanged'       => __( 'City changed — click Re-estimate.', 'webbership-smartship' ),
+        'pickCity'          => __( 'Pick a city.', 'webbership-smartship' ),
+        'pickCourier'       => __( 'Pick a courier.', 'webbership-smartship' ),
+        'selectCityFirst'   => __( 'Select the destination city first.', 'webbership-smartship' ),
+        'issuing'           => __( 'Issuing…', 'webbership-smartship' ),
+        'cancelConfirm'     => __( 'Cancel this AWB?', 'webbership-smartship' ),
+        'loading'           => __( 'Loading…', 'webbership-smartship' ),
+        'sender'            => __( 'Sender:', 'webbership-smartship' ),
+        'pickSector'        => __( 'Pick the Bucharest sector, then Re-estimate.', 'webbership-smartship' ),
+        'selectSector'      => __( '— Select sector —', 'webbership-smartship' ),
+        'selectSectorFirst' => __( 'Select the Bucharest sector first.', 'webbership-smartship' ),
+        'noCounty'          => __( 'SmartShip ships within Romania only, and the order county was not recognized.', 'webbership-smartship' ),
+        'requestFailed'     => __( 'Request failed — reload the page and try again.', 'webbership-smartship' ),
       ],
     ] );
   }
@@ -86,6 +95,13 @@ final class AwbMetabox {
     if ( empty( $resolved['city_id'] ) ) {
       wp_send_json_success( [ 'costs' => [], 'resolved' => $resolved, 'needs_city' => true, 'senders' => self::senders_for_js( $senders ), 'sender_id' => (int) ( $sender['id'] ?? 0 ) ] );
     }
+    // City resolved but not confident only happens for Bucharest with an unparseable
+    // sector (CityResolver guarantees confident=true for every other city_id-set case)
+    // — the city picker would be useless here (Bucuresti is the only option), so ask
+    // for the sector instead of forcing needs_city.
+    if ( empty( $resolved['confident'] ) ) {
+      wp_send_json_success( [ 'costs' => [], 'resolved' => $resolved, 'needs_sector' => true, 'senders' => self::senders_for_js( $senders ), 'sender_id' => (int) ( $sender['id'] ?? 0 ) ] );
+    }
     $payload  = [
       'recipient' => AwbPayload::recipient_from_order( $order, $resolved ),
       'sender'    => AwbPayload::sender_from_account( $sender ),
@@ -101,6 +117,11 @@ final class AwbMetabox {
     if ( ! current_user_can( self::CAP ) ) { wp_send_json_error( [ 'message' => __( 'Forbidden.', 'webbership-smartship' ) ], 403 ); }
     $order = $this->order_from_request();
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'webbership-smartship' ) ], 404 ); }
+    // Guard against a double-click (or a retried request) re-issuing a second,
+    // billable shipment for an order that already has an AWB.
+    if ( '' !== (string) $order->get_meta( '_webbership_smartship_awb' ) ) {
+      wp_send_json_error( [ 'message' => __( 'This order already has an AWB. Cancel it first to issue a new one.', 'webbership-smartship' ) ] );
+    }
     // EasyBox orders must use the manual hand-off (SmartShip has no locker AWB on the
     // partner API) — never auto-create a home-delivery AWB for one at the server boundary.
     if ( '' !== (string) $order->get_meta( '_webbership_smartship_easybox_id' ) ) {
@@ -110,7 +131,9 @@ final class AwbMetabox {
     if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'webbership-smartship' ) ] ); }
 
     $resolved = $this->resolve_for( $order );
-    if ( empty( $resolved['city_id'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'webbership-smartship' ) ] ); }
+    // Not confident also catches the Bucharest-sector-unknown case (city_id set,
+    // sector missing) — issuing then would send sector '0' and SmartShip rejects it.
+    if ( empty( $resolved['city_id'] ) || empty( $resolved['confident'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'webbership-smartship' ) ] ); }
 
     $client  = new SmartShipClient( Settings::api_key() );
     $sender  = self::pick_sender( (array) ( $client->get_senders()['senders'] ?? [] ), absint( $_POST['sender_id'] ?? 0 ) );
@@ -184,7 +207,9 @@ final class AwbMetabox {
     if ( ! $order ) { wp_send_json_error( [ 'message' => __( 'Order not found.', 'webbership-smartship' ) ], 404 ); }
     $awb = sanitize_text_field( (string) ( $_POST['awb'] ?? '' ) );
     if ( '' === $awb ) { wp_send_json_error( [ 'message' => __( 'Enter the AWB number.', 'webbership-smartship' ) ] ); }
-    $courier = __( 'SameDay EasyBox', 'webbership-smartship' );
+    // Meta is stored data, not UI text — keep it locale-independent so it doesn't
+    // change with the admin's language and stays consistent across orders.
+    $courier = 'SameDay EasyBox';
     $order->update_meta_data( '_webbership_smartship_awb', $awb );
     $order->update_meta_data( '_webbership_smartship_courier', $courier );
     $order->add_order_note( sprintf( /* translators: %s: AWB number */ __( 'SmartShip EasyBox AWB %s added manually.', 'webbership-smartship' ), $awb ) );
@@ -192,17 +217,39 @@ final class AwbMetabox {
     wp_send_json_success( [ 'awb' => $awb ] );
   }
 
-  /** county/city: posted dropdown values win (both required); else the resolver. */
+  /**
+   * county/city: posted dropdown values win (both required); else the resolver.
+   * A posted sector (validated) always wins over whatever was parsed, and — paired
+   * with a resolved city_id — makes the resolution confident even if the parser
+   * couldn't find "Sector N" in the address text.
+   */
   private function resolve_for( $order ): array {
     $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
     $city   = isset( $_POST['city_id'] ) ? absint( $_POST['city_id'] ) : 0;
+    $sector = self::posted_sector();
+
     if ( $county && $city ) {
       $is_buc = 'B' === strtoupper( trim( (string) $order->get_shipping_state() ) );
-      $sector = $is_buc ? CityResolver::sector_from( ( $order->get_shipping_city() ?: $order->get_billing_city() ) . ' ' . self::address_lines( $order ) ) : '';
-      return [ 'county_id' => $county, 'city_id' => $city, 'confident' => true, 'sector' => ( '' !== $sector ? $sector : '0' ) ];
+      $parsed   = $is_buc ? CityResolver::sector_from( ( $order->get_shipping_city() ?: $order->get_billing_city() ) . ' ' . self::address_lines( $order ) ) : '';
+      $resolved = [ 'county_id' => $county, 'city_id' => $city, 'confident' => true, 'sector' => ( '' !== $parsed ? $parsed : '0' ) ];
+    } else {
+      $resolver = new CityResolver( new SmartShipClient( Settings::api_key() ) );
+      $resolved = $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ), self::address_lines( $order ) );
     }
-    $resolver = new CityResolver( new SmartShipClient( Settings::api_key() ) );
-    return $resolver->resolve( (string) $order->get_shipping_state(), (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ), self::address_lines( $order ) );
+
+    if ( null !== $sector ) {
+      $resolved['sector'] = $sector;
+      if ( ! empty( $resolved['city_id'] ) ) {
+        $resolved['confident'] = true;
+      }
+    }
+    return $resolved;
+  }
+
+  /** Posted Bucharest sector, validated to a single '1'-'6' char; null if absent/invalid. */
+  private static function posted_sector(): ?string {
+    $raw = isset( $_POST['sector'] ) ? (string) $_POST['sector'] : '';
+    return ( 1 === strlen( $raw ) && in_array( $raw, [ '1', '2', '3', '4', '5', '6' ], true ) ) ? $raw : null;
   }
 
   /**

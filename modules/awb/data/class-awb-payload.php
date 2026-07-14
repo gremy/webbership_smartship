@@ -37,8 +37,23 @@ final class AwbPayload {
       'city'    => isset( $resolved['city_id'] ) ? (int) $resolved['city_id'] : 0,
       'phone'   => (string) $phone,
       'country' => 'RO',
-      'sector'  => (string) ( $resolved['sector'] ?? '0' ),
+      'sector'  => self::canonical_sector( $resolved['sector'] ?? '0' ),
     ];
+  }
+
+  /**
+   * Canonicalize a sector value at an API payload boundary: SmartShip's convention
+   * is '0' = no sector, but some resolution paths yield '' (e.g. CityResolver's
+   * internal "Bucharest sector unknown" signal) — never let '' reach the API.
+   */
+  public static function canonical_sector( $sector ): string {
+    $sector = (string) ( $sector ?? '0' );
+    return '' !== $sector ? $sector : '0';
+  }
+
+  /** Sum -> convert to kg (store weight unit may be g/lbs/oz; SmartShip expects kg). */
+  public static function to_kg( float $weight ): float {
+    return function_exists( 'wc_get_weight' ) ? (float) wc_get_weight( $weight, 'kg' ) : $weight;
   }
 
   public static function content_from_order( $order ): array {
@@ -50,7 +65,7 @@ final class AwbPayload {
         $weight += (float) $product->get_weight() * max( 1, $qty );
       }
     }
-    $weight = max( 1.0, $weight );
+    $weight = max( 1.0, self::to_kg( $weight ) );
 
     $cod = 0.0;
     if ( ! $order->is_paid() || 'cod' === $order->get_payment_method() ) {
@@ -80,7 +95,7 @@ final class AwbPayload {
       'city'    => (int) ( $sender['localitate_id'] ?? 0 ),
       'phone'   => (string) ( $sender['telefon'] ?? '' ),
       'country' => 'RO',
-      'sector'  => (string) ( $sender['sector'] ?? '0' ),
+      'sector'  => self::canonical_sector( $sender['sector'] ?? '0' ),
     ];
   }
 

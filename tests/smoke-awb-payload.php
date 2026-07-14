@@ -9,6 +9,17 @@ namespace {
 
   function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
   function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
+
+  // wc_get_weight() stub: identity when the store unit is 'kg' (the default here,
+  // so every OTHER assertion in this file is unaffected), real conversion otherwise
+  // so the g/lbs/oz -> kg path (Fix 1) is exercised too.
+  $GLOBALS['wc_weight_unit'] = 'kg';
+  function wc_get_weight( $weight, $to_unit, $from_unit = '' ) {
+    $from_unit = '' !== $from_unit ? $from_unit : $GLOBALS['wc_weight_unit'];
+    if ( $from_unit === $to_unit ) { return $weight; }
+    $to_kg = [ 'kg' => 1.0, 'g' => 0.001, 'lbs' => 0.453592, 'oz' => 0.0283495 ];
+    return ( $weight * ( $to_kg[ $from_unit ] ?? 1.0 ) ) / ( $to_kg[ $to_unit ] ?? 1.0 );
+  }
 }
 
 namespace Webbership\Smartship\Settings {
@@ -94,6 +105,32 @@ namespace {
   $o6 = new FakeOrder( [ 'num' => '6', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '2' ), 5 ) ] ] );
   $c6 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o6 );
   assert_same( 10.0, $c6['weight'], 'weight multiplies per-unit weight by quantity' );
+
+  // Fix 1: store weight unit 'g' -> summed weight is converted to kg before the 1kg floor.
+  $GLOBALS['wc_weight_unit'] = 'g';
+  $o7 = new FakeOrder( [ 'num' => '7', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '250' ) ) ] ] );
+  $c7 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o7 );
+  assert_same( 1.0, $c7['weight'], '250g floors to 1kg after conversion (not 250kg)' );
+  $o8 = new FakeOrder( [ 'num' => '8', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '2500' ) ) ] ] );
+  $c8 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o8 );
+  assert_same( 2.5, $c8['weight'], '2500g converts to 2.5kg' );
+  $GLOBALS['wc_weight_unit'] = 'kg';
+
+  // Fix 1 fallback: to_kg() is a no-op when wc_get_weight() doesn't exist (standalone/no WP).
+  assert_true( function_exists( 'wc_get_weight' ), 'sanity: stub is defined in this process' );
+  assert_same( 3.0, Webbership\Smartship\Modules\Awb\Data\AwbPayload::to_kg( 3.0 ), 'to_kg is identity when store unit is kg' );
+
+  // Fix 3: sector canonicalization at the payload boundary — '' (CityResolver's
+  // "unknown Bucharest sector" internal signal) must never reach the API as ''.
+  $rec_no_sector = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $o, [ 'city_id' => 1, 'sector' => '' ] );
+  assert_same( '0', $rec_no_sector['sector'], "recipient: '' sector canonicalizes to '0'" );
+  $rec_with_sector = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $o, [ 'city_id' => 1, 'sector' => '3' ] );
+  assert_same( '3', $rec_with_sector['sector'], 'recipient: a real sector passes through' );
+  $sender_no_sector = Webbership\Smartship\Modules\Awb\Data\AwbPayload::sender_from_account( [ 'sector' => '' ] );
+  assert_same( '0', $sender_no_sector['sector'], "sender: '' sector canonicalizes to '0'" );
+  assert_same( '0', Webbership\Smartship\Modules\Awb\Data\AwbPayload::canonical_sector( null ), 'canonical_sector: null -> 0' );
+  assert_same( '0', Webbership\Smartship\Modules\Awb\Data\AwbPayload::canonical_sector( '' ), "canonical_sector: '' -> 0" );
+  assert_same( '5', Webbership\Smartship\Modules\Awb\Data\AwbPayload::canonical_sector( '5' ), 'canonical_sector: real value passes through' );
 
   echo "smoke-awb-payload: all assertions passed\n";
 }

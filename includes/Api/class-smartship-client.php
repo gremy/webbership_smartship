@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Webbership\Smartship\Api;
 
+use Webbership\Smartship\Logger;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -91,49 +93,69 @@ final class SmartShipClient {
    * with an empty body as a best-effort success; the caller still clears locally.
    */
   public function cancel_awb( string $awb ): array {
-    $url      = $this->base_url . '/awb/cancel/' . rawurlencode( $awb );
+    $path     = '/awb/cancel/' . rawurlencode( $awb );
+    $url      = $this->base_url . $path;
     $response = wp_remote_get( $url, [ 'timeout' => self::TIMEOUT, 'headers' => $this->headers( false ) ] );
     if ( is_wp_error( $response ) ) {
-      return $this->error( 0, 'transport_error', $response->get_error_message() );
+      $result = $this->error( 0, 'transport_error', $response->get_error_message() );
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
     $http = (int) wp_remote_retrieve_response_code( $response );
     $body = trim( (string) wp_remote_retrieve_body( $response ) );
     // /awb/cancel returns an empty 200 on a successful request (no JSON body).
     if ( $http >= 200 && $http < 300 && '' === $body ) {
-      return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+      $result = [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
     $json = json_decode( $body, true );
     if ( is_array( $json ) ) {
       $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
       // Strict success (matches request()): the body status must be the integer 200.
       if ( isset( $json['status'] ) && is_int( $json['status'] ) && 200 === $json['status'] ) {
-        return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+        $result = [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ];
+        $this->log_result( 'GET', $path, $result );
+        return $result;
       }
-      return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
-    return $this->error( $http, 'cancel_failed', __( 'SmartShip did not confirm the cancellation.', 'webbership-smartship' ) );
+    $result = $this->error( $http, 'cancel_failed', __( 'SmartShip did not confirm the cancellation.', 'webbership-smartship' ) );
+    $this->log_result( 'GET', $path, $result );
+    return $result;
   }
 
   public function print_awb( string $awb, string $format = 'A4' ): array {
-    $format = in_array( $format, [ 'A4', 'A6' ], true ) ? $format : 'A4';
-    $url      = $this->base_url . '/awb/print/' . rawurlencode( $awb ) . '/' . $format;
+    $format   = in_array( $format, [ 'A4', 'A6' ], true ) ? $format : 'A4';
+    $path     = '/awb/print/' . rawurlencode( $awb ) . '/' . $format;
+    $url      = $this->base_url . $path;
     $response = wp_remote_get( $url, [ 'timeout' => self::TIMEOUT, 'headers' => $this->headers( false ) ] );
     if ( is_wp_error( $response ) ) {
-      return $this->error( 0, 'transport_error', $response->get_error_message() );
+      $result = $this->error( 0, 'transport_error', $response->get_error_message() );
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
     $http = (int) wp_remote_retrieve_response_code( $response );
     $body = (string) wp_remote_retrieve_body( $response );
     // The %PDF magic is the only proof of a PDF; content-type is metadata SmartShip
     // also sets on its JSON error bodies, so it can't gate success.
     if ( strncmp( $body, '%PDF', 4 ) === 0 ) {
-      return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [], 'pdf' => $body, 'content_type' => 'application/pdf' ];
+      $result = [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [], 'pdf' => $body, 'content_type' => 'application/pdf' ];
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
     $json = json_decode( $body, true );
     if ( is_array( $json ) ) {
       $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
-      return [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $this->log_result( 'GET', $path, $result );
+      return $result;
     }
-    return $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'webbership-smartship' ) );
+    $result = $this->error( $http, 'invalid_response', __( 'SmartShip did not return a PDF.', 'webbership-smartship' ) );
+    $this->log_result( 'GET', $path, $result );
+    return $result;
   }
 
   /**
@@ -178,14 +200,18 @@ final class SmartShipClient {
     $response = wp_remote_request( $url, $http_args );
 
     if ( is_wp_error( $response ) ) {
-      return $this->error( 0, 'transport_error', $response->get_error_message() );
+      $result = $this->error( 0, 'transport_error', $response->get_error_message() );
+      $this->log_result( $method, $path, $result );
+      return $result;
     }
 
     $http = (int) wp_remote_retrieve_response_code( $response );
     $body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 
     if ( ! is_array( $body ) ) {
-      return $this->error( $http, 'invalid_json', __( 'Unexpected response from SmartShip.', 'webbership-smartship' ) );
+      $result = $this->error( $http, 'invalid_json', __( 'Unexpected response from SmartShip.', 'webbership-smartship' ) );
+      $this->log_result( $method, $path, $result );
+      return $result;
     }
 
     // Success requires a STRICT integer 200 in the body — a non-integer like
@@ -193,7 +219,7 @@ final class SmartShipClient {
     $app_status = isset( $body['status'] ) ? (int) $body['status'] : 0;
     $is_success = isset( $body['status'] ) && is_int( $body['status'] ) && 200 === $body['status'];
     if ( ! $is_success ) {
-      return [
+      $result = [
         'ok'      => false,
         'status'  => $app_status,
         'http'    => $http,
@@ -201,9 +227,31 @@ final class SmartShipClient {
         'message' => $this->error_message( $app_status, $body ),
         'errors'  => ( isset( $body['erori'] ) && is_array( $body['erori'] ) ) ? $body['erori'] : [],
       ];
+      $this->log_result( $method, $path, $result );
+      return $result;
     }
 
-    return [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ] + $body;
+    $result = [ 'ok' => true, 'status' => 200, 'http' => $http, 'code' => '', 'message' => '', 'errors' => [] ] + $body;
+    $this->log_result( $method, $path, $result );
+    return $result;
+  }
+
+  /**
+   * Log the outcome of an API call: info on success, error on failure. Never logs
+   * the API key (Logger redacts it) or request/response bodies — only the path,
+   * HTTP status, and the API's own message/errors (field-level codes, not PII).
+   */
+  private function log_result( string $method, string $path, array $result ): void {
+    $context = [ 'method' => $method, 'path' => $path, 'http' => $result['http'] ?? 0, 'status' => $result['status'] ?? 0 ];
+    if ( ! empty( $result['ok'] ) ) {
+      Logger::info( 'SmartShip API call succeeded', $context );
+      return;
+    }
+    $context['message'] = $result['message'] ?? '';
+    if ( ! empty( $result['errors'] ) ) {
+      $context['errors'] = $result['errors'];
+    }
+    Logger::error( 'SmartShip API call failed', $context );
   }
 
   private function headers( bool $shop_headers ): array {

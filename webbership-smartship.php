@@ -5,8 +5,9 @@
  * Description:       SmartShip.ro courier integration for WooCommerce: live checkout rates and AWB issuance.
  * Version:           0.3.0
  * Requires at least: 6.4
- * Tested up to:      6.6
+ * Tested up to:      6.8
  * Requires PHP:      7.4
+ * Requires Plugins:  woocommerce
  * Author:            WEBBERSHIP SRL
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html

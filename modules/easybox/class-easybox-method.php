@@ -88,8 +88,20 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     $config = $this->config();
 
     // Headless/cron (e.g. a subscription renewal) -> fallback, never call the API.
+    // Checked BEFORE the block-checkout gate: a renewal that priced its shipping
+    // via EasyBox must keep getting its fallback rate even on a blocks store.
     if ( wp_doing_cron() || ! function_exists( 'WC' ) || null === WC()->session ) {
       $this->add_fallback( $config );
+      return;
+    }
+
+    // The locker picker, its validation, and saving the chosen locker onto the
+    // order all hook classic-checkout actions only. WooCommerce Blocks checkout
+    // has no Store API integration for any of that yet, so offering this rate
+    // there would let an order place with no locker collected. Suppress the rate
+    // until block-checkout support is built. (Sessions that cached this rate
+    // before a checkout-type switch self-heal when the cart/destination changes.)
+    if ( $this->is_block_checkout() ) {
       return;
     }
 
@@ -125,6 +137,15 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
       'cost'      => EasyBoxPricing::price( $sameday / $divisor, $config ),
       'meta_data' => [ 'easybox' => 1 ],
     ] );
+  }
+
+  private function is_block_checkout(): bool {
+    $util = '\\Automattic\\WooCommerce\\Blocks\\Utils\\CartCheckoutUtils';
+    if ( class_exists( $util ) && method_exists( $util, 'is_checkout_block_default' ) ) {
+      return (bool) $util::is_checkout_block_default();
+    }
+    return function_exists( 'has_block' ) && function_exists( 'wc_get_page_id' )
+      && has_block( 'woocommerce/checkout', wc_get_page_id( 'checkout' ) );
   }
 
   private function add_fallback( array $config ): void {

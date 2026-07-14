@@ -5,6 +5,7 @@ namespace Webbership\Smartship\Modules\EasyBox;
 
 defined( 'ABSPATH' ) || exit;
 
+use Webbership\Smartship\Dependencies;
 use Webbership\Smartship\Module;
 use Webbership\Smartship\Api\SmartShipClient;
 use Webbership\Smartship\Settings\Settings;
@@ -17,7 +18,7 @@ use Webbership\Smartship\Settings\Settings;
 final class EasyBoxModule extends Module {
   public function name(): string { return 'easybox'; }
 
-  public function is_supported(): bool { return class_exists( 'WooCommerce' ); }
+  public function is_supported(): bool { return Dependencies::woocommerce_active(); }
 
   public function register_hooks(): void {
     require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/easybox/class-easybox-method.php';
@@ -111,8 +112,15 @@ final class EasyBoxModule extends Module {
     if ( '' === $key ) {
       wp_send_json_error( [ 'message' => __( 'EasyBox is not configured.', 'webbership-smartship' ) ], 503 );
     }
+    $lockers = LockerRepository::all( new SmartShipClient( $key ) );
+    if ( null === $lockers ) {
+      wp_send_json_error( [
+        'message'   => __( "Couldn't load lockers.", 'webbership-smartship' ),
+        'retryable' => true,
+      ] );
+    }
     // Public, slowly-changing list — let the browser cache it (override admin-ajax's no-cache).
     header( 'Cache-Control: public, max-age=3600' );
-    wp_send_json_success( [ 'lockers' => LockerRepository::all( new SmartShipClient( $key ) ) ] );
+    wp_send_json_success( [ 'lockers' => $lockers ] );
   }
 }

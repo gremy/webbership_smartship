@@ -1,0 +1,99 @@
+<?php
+declare(strict_types=1);
+
+// Run: php tests/smoke-awb-metabox-guard.php
+// Fix 2: a double-click on "Issue AWB" must not create a second billable shipment.
+
+define( 'ABSPATH', __DIR__ );
+
+$GLOBALS['webbership_options'] = [];
+function get_option( $k, $d = false ) { return $GLOBALS['webbership_options'][ $k ] ?? $d; }
+function wp_parse_args( $a, $d ) { return array_merge( $d, is_array( $a ) ? $a : [] ); }
+function __( $t, $d = 'default' ) { return $t; }
+function absint( $v ) { return abs( (int) $v ); }
+function current_user_can( $cap ) { return true; }
+function check_ajax_referer( $action = -1, $query_arg = false, $die = true ) { return true; }
+
+$GLOBALS['wc_orders'] = [];
+function wc_get_order( $id ) { return $GLOBALS['wc_orders'][ $id ] ?? false; }
+
+/** wp_send_json_*() normally wp_die()s after sending; halt via exception so the test can inspect the payload. */
+class WPJsonHalt extends RuntimeException {
+  public array $payload;
+  public function __construct( array $payload ) { $this->payload = $payload; parent::__construct( 'wp_send_json halt' ); }
+}
+function wp_send_json_error( $data = null, $status_code = null ) { throw new WPJsonHalt( [ 'success' => false, 'data' => $data ] ); }
+function wp_send_json_success( $data = null ) { throw new WPJsonHalt( [ 'success' => true, 'data' => $data ] ); }
+
+function assert_same( $expected, $actual, string $msg ): void {
+  if ( $expected !== $actual ) {
+    throw new RuntimeException( $msg . ': expected ' . var_export( $expected, true ) . ', got ' . var_export( $actual, true ) );
+  }
+}
+
+require_once __DIR__ . '/../includes/Settings/class-settings.php';
+require_once __DIR__ . '/../includes/Support/class-city-resolver.php';
+require_once __DIR__ . '/../modules/awb/admin/class-awb-metabox.php';
+
+use Webbership\Smartship\Modules\Awb\Admin\AwbMetabox;
+
+class FakeOrder {
+  private array $meta;
+  public function __construct( array $meta = [] ) { $this->meta = $meta; }
+  public function get_meta( $key ) { return $this->meta[ $key ] ?? ''; }
+}
+
+$metabox = new AwbMetabox();
+
+// 1) Order already has an AWB -> ajax_issue errors before touching the SmartShip API.
+$GLOBALS['wc_orders'][1] = new FakeOrder( [ '_webbership_smartship_awb' => '1234567890' ] );
+$_REQUEST['order_id'] = 1;
+try {
+  $metabox->ajax_issue();
+  throw new RuntimeException( 'expected ajax_issue to halt via wp_send_json_error' );
+} catch ( WPJsonHalt $halt ) {
+  assert_same( false, $halt->payload['success'], 'duplicate AWB: reports failure' );
+  assert_same( 'This order already has an AWB. Cancel it first to issue a new one.', $halt->payload['data']['message'], 'duplicate AWB: message' );
+}
+
+// 2) Order has no AWB yet -> the duplicate guard does NOT fire; execution reaches
+//    the next guard (no courier_id posted) instead of the duplicate-AWB message.
+$GLOBALS['wc_orders'][2] = new FakeOrder( [] );
+$_REQUEST['order_id'] = 2;
+unset( $_POST['courier_id'] );
+try {
+  $metabox->ajax_issue();
+  throw new RuntimeException( 'expected ajax_issue to halt via wp_send_json_error' );
+} catch ( WPJsonHalt $halt ) {
+  assert_same( false, $halt->payload['success'], 'no AWB yet: still reports failure (no courier chosen)' );
+  assert_same( 'Choose a courier.', $halt->payload['data']['message'], 'no AWB yet: guard did not fire, reached the courier check' );
+}
+
+// 3) resolve_for(): a posted sector wins over the parsed one (Fix A); an invalid
+//    posted sector is ignored and the parsed/default value is kept.
+class FakeOrderAddr {
+  public function get_meta( $key ) { return ''; }
+  public function get_shipping_state() { return 'B'; }
+  public function get_shipping_city() { return 'Bucuresti'; }
+  public function get_billing_city() { return ''; }
+  public function get_shipping_address_1() { return 'Str. Exemplu 1'; }
+  public function get_shipping_address_2() { return ''; }
+  public function get_billing_address_1() { return ''; }
+  public function get_billing_address_2() { return ''; }
+}
+
+$resolve_for = new ReflectionMethod( AwbMetabox::class, 'resolve_for' );
+$resolve_for->setAccessible( true );
+
+$_POST = [ 'county_id' => 255, 'city_id' => 255154, 'sector' => '3' ];
+$resolved = $resolve_for->invoke( $metabox, new FakeOrderAddr() );
+assert_same( '3', $resolved['sector'], 'posted sector: wins over the parsed sector' );
+assert_same( true, $resolved['confident'], 'posted sector + resolved city_id: counts as confident' );
+
+$_POST = [ 'county_id' => 255, 'city_id' => 255154, 'sector' => '9' ];
+$resolved = $resolve_for->invoke( $metabox, new FakeOrderAddr() );
+assert_same( '0', $resolved['sector'], 'invalid posted sector: ignored, falls back to the parsed/default value' );
+
+unset( $_POST['county_id'], $_POST['city_id'], $_POST['sector'] );
+
+echo "smoke-awb-metabox-guard: all assertions passed\n";

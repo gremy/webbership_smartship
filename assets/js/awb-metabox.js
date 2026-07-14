@@ -2,30 +2,43 @@
   function box() { return $( '.webbership-ss-awb' ); }
   function orderId() { return box().data( 'order' ); }
 
-  // Chosen override (set when the merchant picks a city); threaded into re-estimate + issue.
-  var override = { county_id: 0, city_id: 0 };
+  // Chosen override (set when the merchant picks a city/sector); threaded into re-estimate + issue.
+  var override = { county_id: 0, city_id: 0, sector: '' };
   // Per-order sender (pickup point) choice; 0 = the settings default.
   var senderId = 0;
+
+  // Shared .fail() so an expired nonce (403) or network error never leaves a
+  // "Estimating…/Issuing…/Saving…" message frozen forever.
+  function ajaxFail() { $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.requestFailed ); }
 
   function runEstimate() {
     var $msg = $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.estimating );
     var data = { action: 'webbership_smartship_estimate', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
+    if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       renderSenderPicker( r.data.senders || [], r.data.sender_id || 0 );
       // No city resolved yet: show the picker, withhold couriers/Issue until re-estimate.
+      // No county at all (foreign/blank state) → no picker to show, say so plainly.
       if ( r.data.needs_city ) {
         $( '.webbership-ss-couriers' ).empty();
         maybeRenderCityPicker( r.data.resolved );
-        $msg.text( WebbershipSmartShip.i18n.pickCityReest );
+        $msg.text( r.data.resolved && r.data.resolved.county_id ? WebbershipSmartShip.i18n.pickCityReest : WebbershipSmartShip.i18n.noCounty );
+        return;
+      }
+      // City resolved (Bucuresti) but the sector couldn't be parsed from the address.
+      if ( r.data.needs_sector ) {
+        $( '.webbership-ss-couriers' ).empty();
+        maybeRenderSectorPicker();
+        $msg.text( WebbershipSmartShip.i18n.pickSector );
         return;
       }
       $msg.text( '' );
       renderCouriers( r.data.costs || [] );
       maybeRenderCityPicker( r.data.resolved );
-    } );
+    } ).fail( ajaxFail );
   }
 
   // Sender picker: only shown when the SmartShip account has more than one pickup point.
@@ -50,10 +63,11 @@
   function renderCouriers( costs ) {
     var $c = $( '.webbership-ss-couriers' ).empty();
     costs.forEach( function ( c ) {
-      var id = 'ss-c-' + c.courier_id;
+      var id    = 'ss-c-' + c.courier_id;
+      var label = c.courier_name + ' — ' + c.cost + ' lei' + ( c.delivery_date ? ' (' + c.delivery_date + ')' : '' );
       $c.append( $( '<label/>' ).append(
         $( '<input type="radio" name="ss_courier"/>' ).val( c.courier_id ).attr( 'id', id ),
-        ' ', document.createTextNode( c.courier_name + ' — ' + c.cost + ' lei (' + ( c.delivery_date || '' ) + ')' ), '<br/>'
+        ' ', document.createTextNode( label ), '<br/>'
       ) );
     } );
     $c.append( $( '<button type="button" class="button button-primary webbership-ss-issue">' ).text( WebbershipSmartShip.i18n.issueAwb ) );
@@ -62,6 +76,7 @@
   // Resolver wasn't confident: let the merchant pick the city for the resolved county.
   function maybeRenderCityPicker( resolved ) {
     if ( ! resolved || resolved.confident !== false || ! resolved.county_id ) { return; }
+    $( '.webbership-ss-sector-picker' ).remove();
     var $wrap = $( '.webbership-ss-city-picker' );
     if ( ! $wrap.length ) {
       $wrap = $( '<div class="webbership-ss-city-picker"/>' );
@@ -85,13 +100,31 @@
         // city.city is an API string → insert as text only, never as HTML.
         $sel.append( $( '<option/>' ).val( city.id ).text( city.city ) );
       } );
-    } );
+    } ).fail( ajaxFail );
     // Remember the county so the chosen city is paired with it.
     $wrap.data( 'county', resolved.county_id );
     // A picker is shown → the current dropdown selection always wins, even if
     // the merchant clicks Issue without re-estimating. Seed the county now and
     // keep city_id in sync on every change.
-    override = { county_id: resolved.county_id, city_id: parseInt( $sel.val(), 10 ) || 0 };
+    override = { county_id: resolved.county_id, city_id: parseInt( $sel.val(), 10 ) || 0, sector: '' };
+  }
+
+  // City resolved (Bucuresti) but the sector couldn't be parsed from the address —
+  // let the merchant pick it. No AJAX call needed: sectors are a fixed 1-6.
+  function maybeRenderSectorPicker() {
+    $( '.webbership-ss-city-picker' ).remove();
+    var $wrap = $( '.webbership-ss-sector-picker' );
+    if ( ! $wrap.length ) {
+      $wrap = $( '<div class="webbership-ss-sector-picker"/>' );
+      box().append( $wrap );
+    }
+    $wrap.empty();
+    var $sel = $( '<select class="webbership-ss-sector"/>' );
+    $sel.append( $( '<option/>' ).val( '' ).prop( 'disabled', true ).prop( 'selected', true ).text( WebbershipSmartShip.i18n.selectSector ) );
+    for ( var n = 1; n <= 6; n++ ) { $sel.append( $( '<option/>' ).val( n ).text( 'Sector ' + n ) ); }
+    $wrap.append( $sel );
+    $wrap.append( $( '<button type="button" class="button webbership-ss-sector-reestimate">' ).text( WebbershipSmartShip.i18n.reestimate ) );
+    override.sector = '';
   }
 
   $( document ).on( 'change', '.webbership-ss-city', function () {
@@ -102,8 +135,15 @@
     $( '.webbership-ss-msg' ).text( override.city_id ? WebbershipSmartShip.i18n.cityChanged : '' );
   } );
 
+  $( document ).on( 'change', '.webbership-ss-sector', function () {
+    override.sector = $( this ).val() || '';
+    // Sector changed → the prior estimate's couriers (and Issue button) are stale;
+    // clear them so the merchant must Re-estimate before issuing.
+    $( '.webbership-ss-couriers' ).empty();
+  } );
+
   $( document ).on( 'click', '.webbership-ss-estimate', function () {
-    override = { county_id: 0, city_id: 0 };
+    override = { county_id: 0, city_id: 0, sector: '' };
     runEstimate();
   } );
 
@@ -111,7 +151,14 @@
     var $wrap = $( '.webbership-ss-city-picker' );
     var city  = $wrap.find( '.webbership-ss-city' ).val();
     if ( ! city ) { $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.pickCity ); return; }
-    override = { county_id: $wrap.data( 'county' ), city_id: city };
+    override = { county_id: $wrap.data( 'county' ), city_id: city, sector: '' };
+    runEstimate();
+  } );
+
+  $( document ).on( 'click', '.webbership-ss-sector-reestimate', function () {
+    var sector = $( '.webbership-ss-sector' ).val();
+    if ( ! sector ) { $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.pickSector ); return; }
+    override.sector = sector;
     runEstimate();
   } );
 
@@ -122,25 +169,32 @@
     if ( $( '.webbership-ss-city' ).length && ! override.city_id ) {
       $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.selectCityFirst ); return;
     }
+    // A sector picker shown but no sector chosen → don't issue with an unresolved Bucharest address.
+    if ( $( '.webbership-ss-sector' ).length && ! override.sector ) {
+      $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.selectSectorFirst ); return;
+    }
     $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.issuing );
     var data = { action: 'webbership_smartship_issue', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId(), courier_id: courier };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
+    if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       window.location.reload();
-    } );
+    } ).fail( ajaxFail );
   } );
 
   $( document ).on( 'click', '.webbership-ss-cancel', function () {
     if ( ! window.confirm( WebbershipSmartShip.i18n.cancelConfirm ) ) { return; }
     $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_cancel', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() } )
-      .done( function ( r ) { if ( r.success ) { window.location.reload(); } else { alert( r.data && r.data.message ); } } );
+      .done( function ( r ) { if ( r.success ) { window.location.reload(); } else { alert( r.data && r.data.message ); } } )
+      .fail( function () { alert( WebbershipSmartShip.i18n.requestFailed ); } );
   } );
   $( document ).on( 'click', '.webbership-ss-track', function () {
     var $t = $( '.webbership-ss-tracking' ).text( WebbershipSmartShip.i18n.loading );
     $.post( WebbershipSmartShip.ajax, { action: 'webbership_smartship_status', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() } )
-      .done( function ( r ) { $t.text( r.success ? JSON.stringify( r.data.history || r.data ) : ( r.data && r.data.message ) ); } );
+      .done( function ( r ) { $t.text( r.success ? JSON.stringify( r.data.history || r.data ) : ( r.data && r.data.message ) ); } )
+      .fail( function () { $t.text( WebbershipSmartShip.i18n.requestFailed ); } );
   } );
 
   // EasyBox hand-off: copy the recipient block for the SmartShip form.
@@ -173,6 +227,7 @@
       .done( function ( r ) {
         if ( r.success ) { window.location.reload(); return; }
         $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed );
-      } );
+      } )
+      .fail( ajaxFail );
   } );
 } )( jQuery );

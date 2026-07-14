@@ -18,9 +18,17 @@ through the official SmartShip partner API.
 - **Hardened API client** — models SmartShip's in-body `status` success convention (it
   returns HTTP 200 with an in-body error code), validates PDF responses by magic bytes,
   and keeps the API key server-side (never in a URL, log, or the browser).
+- **EasyBox / locker delivery** — a locker shipping method priced off the live SameDay
+  home rate (configurable discount factor, with a flat fallback), plus a map + searchable
+  list locker picker at checkout. Classic checkout only for now (see note below). Because
+  SmartShip's partner API has no locker AWB endpoint, issuing the EasyBox AWB is a manual
+  hand-off from the order's SmartShip metabox rather than automatic.
+- **WooCommerce Fulfillments provider** — registers SmartShip as a shipping provider so
+  fulfillments show the SmartShip tracking URL and courier name (e.g. in the shipped-order
+  email).
 - **Couriers**: Cargus, SameDay, FanCourier, DragonStar, DPD, PTT Express, SmartShip
   Delivery (whatever your SmartShip account offers for the route).
-- Translation-ready (`webbership-smartship` text domain, EN/RO), HPOS-compatible,
+- Translation-ready (`webbership-smartship` text domain, `.pot` included), HPOS-compatible,
   no Composer/npm runtime dependencies.
 
 ## Requirements
@@ -34,17 +42,21 @@ through the official SmartShip partner API.
 1. Copy this repository into `wp-content/plugins/webbership-smartship/` (or install the
    release zip).
 2. Activate **Webbership SmartShip** in *Plugins*.
-3. Go to **WooCommerce → Settings → SmartShip**, enter your API key, pick a sender, and
+3. Go to **WooCommerce → SmartShip**, enter your API key, pick a sender, and
    (for cash-on-delivery) add your IBAN. Use *Test connection* to confirm credentials.
-4. Add the **Webbership SmartShip** shipping method to the shipping zones where you want
+4. Add the **SmartShip Live Rates** shipping method (and, if you want locker delivery, the
+   **Ridicare Sameday Point / EasyBox** method) to the shipping zones where you want
    live rates.
 
 ## A note on SameDay EasyBox / lockers
 
-Locker delivery is **not** available through the SmartShip *partner API* — `/cost` never
-returns a locker option, there is no locker field on the AWB schema, and the locker
-courier IDs the SmartShip website uses internally are not exposed to integrations. EasyBox
-is therefore intentionally out of scope until SmartShip exposes it on the partner API.
+SmartShip's *partner API* has no locker-AWB endpoint — `/awb/new` cannot issue a waybill
+for a locker destination. EasyBox is still supported end-to-end: the shipping rate is
+priced from the live SameDay home rate, and the customer picks a locker on a map at
+checkout (classic checkout only — WooCommerce Blocks checkout has no locker-collection
+integration yet, so the rate is suppressed there). Because the API can't issue the AWB
+automatically, issuing it for an EasyBox order is a manual step from the order's SmartShip
+metabox instead of the usual estimate → issue flow.
 
 ## Development
 

@@ -36,7 +36,7 @@ final class CostService {
     }
 
     $city_id = (int) $resolved['city_id'];
-    $weight  = (int) ceil( max( 1.0, self::package_weight( $package ) ) );
+    $weight  = (int) ceil( max( 1.0, AwbPayload::to_kg( self::package_weight( $package ) ) ) );
 
     // Validate the sender BEFORE the caches (Phase 3 order): a missing/invalid
     // sender must yield fallback even when the rate cache for this city is hot.
@@ -45,29 +45,35 @@ final class CostService {
       return null;
     }
 
-    $key    = 'webbership_ss_rate_' . md5( $city_id . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
+    // Bucharest sector is intentionally omitted here: every sector shares the same
+    // city id and cost, so one cached quote covers all of them.
+    $hash   = md5( $city_id . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
+    $key    = 'webbership_ss_rate_' . $hash;
+    // Scoped per destination (same hash as the rate-cache key) so one bad destination
+    // doesn't suppress live rates for every other customer's checkout for 60s.
+    $fail_key = 'webbership_ss_rate_fail_' . $hash;
     $cached = get_transient( $key );
     if ( is_array( $cached ) ) {
       return $cached;
     }
-    if ( get_transient( 'webbership_ss_rate_fail' ) ) {
+    if ( get_transient( $fail_key ) ) {
       return null;
     }
 
     $body = [
-      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => (string) ( $resolved['sector'] ?? '0' ) ],
+      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => AwbPayload::canonical_sector( $resolved['sector'] ?? '0' ) ],
       'sender'    => $sender,
       'content'   => [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ],
     ];
     $res = $client->cost( $body, SmartShipClient::RATE_TIMEOUT );
     if ( empty( $res['ok'] ) ) {
-      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
+      set_transient( $fail_key, 1, MINUTE_IN_SECONDS );
       return null;
     }
     $costs = $res['costs'] ?? ( $res['response']['costs'] ?? [] );
     // A malformed ok-response (costs not an array) must fall back, not fatal a downstream array consumer.
     if ( ! is_array( $costs ) ) {
-      set_transient( 'webbership_ss_rate_fail', 1, MINUTE_IN_SECONDS );
+      set_transient( $fail_key, 1, MINUTE_IN_SECONDS );
       return null;
     }
     set_transient( $key, $costs, 10 * MINUTE_IN_SECONDS );
