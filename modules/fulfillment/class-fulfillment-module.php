@@ -51,7 +51,12 @@ final class FulfillmentModule extends Module {
   }
 
   public function register_provider( array $providers ): array {
-    $providers[ self::PROVIDER_KEY ] = SmartshipShippingProvider::class;
+    // Register an INSTANCE, not the class name: WooCommerce resolves string
+    // class names through its DI container, which refuses (throws for) classes
+    // outside the Automattic\WooCommerce namespace — the provider would be
+    // silently dropped from FulfillmentUtils::get_shipping_providers() and
+    // never appear in the fulfillment drawer. An instance is used as-is.
+    $providers[ self::PROVIDER_KEY ] = new SmartshipShippingProvider();
     return $providers;
   }
 
