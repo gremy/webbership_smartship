@@ -132,5 +132,38 @@ namespace {
   assert_same( '0', Webbership\Smartship\Modules\Awb\Data\AwbPayload::canonical_sector( '' ), "canonical_sector: '' -> 0" );
   assert_same( '5', Webbership\Smartship\Modules\Awb\Data\AwbPayload::canonical_sector( '5' ), 'canonical_sector: real value passes through' );
 
+  // order_weight_kg(): same computed-weight logic content_from_order() uses for its default.
+  $o9 = new FakeOrder( [ 'items' => [ new FakeItem( new FakeProduct( '2' ), 3 ) ] ] );
+  assert_same( 6.0, Webbership\Smartship\Modules\Awb\Data\AwbPayload::order_weight_kg( $o9 ), 'order_weight_kg: sums per-unit weight * qty' );
+  $o10 = new FakeOrder( [ 'items' => [ new FakeItem( new FakeProduct( '0.2' ) ) ] ] );
+  assert_same( 1.0, Webbership\Smartship\Modules\Awb\Data\AwbPayload::order_weight_kg( $o10 ), 'order_weight_kg: floors at 1.0kg' );
+
+  // content_from_order() package overrides: a posted weight wins outright, no 1.0kg floor
+  // (only the 0.05kg sanity floor) — the merchant is stating the real packed weight.
+  $o11 = new FakeOrder( [ 'num' => '11', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [ new FakeItem( new FakeProduct( '2' ) ) ] ] );
+  $c11 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o11, [ 'weight' => 0.5 ] );
+  assert_same( 0.5, $c11['weight'], 'posted weight override: no 1.0kg floor' );
+  assert_same( 10, $c11['length'], 'no length override: falls back to 10' );
+
+  // Dims honored when posted.
+  $c12 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o11, [ 'length' => 30, 'width' => 20, 'height' => 15 ] );
+  assert_same( 30, $c12['length'], 'posted length honored' );
+  assert_same( 20, $c12['width'], 'posted width honored' );
+  assert_same( 15, $c12['height'], 'posted height honored' );
+  assert_same( 2.0, $c12['weight'], 'no weight override: falls back to computed weight' );
+
+  // Invalid/absent keys are simply absent from $package -> every default applies untouched.
+  $c13 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o11, [] );
+  assert_same( 2.0, $c13['weight'], 'empty package: computed weight default' );
+  assert_same( 10, $c13['length'], 'empty package: length default' );
+  assert_same( 10, $c13['width'], 'empty package: width default' );
+  assert_same( 10, $c13['height'], 'empty package: height default' );
+
+  // build() forwards $package into content_from_order().
+  $built = Webbership\Smartship\Modules\Awb\Data\AwbPayload::build( $o11, [ 'city_id' => 1 ], [], 5, [ 'weight' => 0.5, 'length' => 25 ] );
+  assert_same( 0.5, $built['content']['weight'], 'build(): forwards weight override' );
+  assert_same( 25, $built['content']['length'], 'build(): forwards length override' );
+  assert_same( 10, $built['content']['width'], 'build(): unset dims still default' );
+
   echo "smoke-awb-payload: all assertions passed\n";
 }

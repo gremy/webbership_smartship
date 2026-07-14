@@ -11,12 +11,21 @@
   // "Estimating…/Issuing…/Saving…" message frozen forever.
   function ajaxFail() { $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.requestFailed ); }
 
+  // Package fields (weight/length/width/height): only sent when present and filled in.
+  function addPackageData( data ) {
+    $.each( { weight: '.webbership-ss-weight', length: '.webbership-ss-length', width: '.webbership-ss-width', height: '.webbership-ss-height' }, function ( key, sel ) {
+      var $el = $( sel );
+      if ( $el.length && $el.val() !== '' ) { data[ key ] = $el.val(); }
+    } );
+  }
+
   function runEstimate() {
     var $msg = $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.estimating );
     var data = { action: 'webbership_smartship_estimate', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
     if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
+    addPackageData( data );
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       renderSenderPicker( r.data.senders || [], r.data.sender_id || 0 );
@@ -135,6 +144,28 @@
     $( '.webbership-ss-msg' ).text( override.city_id ? WebbershipSmartShip.i18n.cityChanged : '' );
   } );
 
+  // Package changed (preset picked or a field hand-edited) → the prior estimate's
+  // couriers (and Issue button) are stale for the new weight/dims.
+  function packageChanged() {
+    $( '.webbership-ss-couriers' ).empty();
+    $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.packageChanged );
+  }
+
+  $( document ).on( 'change', '.webbership-ss-box-preset', function () {
+    var $opt = $( this ).find( ':selected' );
+    if ( $opt.val() === '' ) { return; }
+    $( '.webbership-ss-length' ).val( $opt.data( 'l' ) );
+    $( '.webbership-ss-width' ).val( $opt.data( 'w' ) );
+    $( '.webbership-ss-height' ).val( $opt.data( 'h' ) );
+    var $weight = $( '.webbership-ss-weight' );
+    var base    = parseFloat( $weight.data( 'base' ) ) || 0;
+    var boxKg   = parseFloat( $opt.data( 'kg' ) ) || 0;
+    $weight.val( ( base + boxKg ).toFixed( 2 ) );
+    packageChanged();
+  } );
+
+  $( document ).on( 'input', '.webbership-ss-weight, .webbership-ss-length, .webbership-ss-width, .webbership-ss-height', packageChanged );
+
   $( document ).on( 'change', '.webbership-ss-sector', function () {
     override.sector = $( this ).val() || '';
     // Sector changed → the prior estimate's couriers (and Issue button) are stale;
@@ -178,6 +209,7 @@
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
     if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
+    addPackageData( data );
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       window.location.reload();

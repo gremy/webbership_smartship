@@ -56,7 +56,8 @@ final class AwbPayload {
     return function_exists( 'wc_get_weight' ) ? (float) wc_get_weight( $weight, 'kg' ) : $weight;
   }
 
-  public static function content_from_order( $order ): array {
+  /** Sum of product weights on the order, kg-converted, floored at 1.0 — the PREFILL default shown in the metabox. */
+  public static function order_weight_kg( $order ): float {
     $weight = 0.0;
     foreach ( $order->get_items() as $item ) {
       $product = method_exists( $item, 'get_product' ) ? $item->get_product() : null;
@@ -65,7 +66,19 @@ final class AwbPayload {
         $weight += (float) $product->get_weight() * max( 1, $qty );
       }
     }
-    $weight = max( 1.0, self::to_kg( $weight ) );
+    return max( 1.0, self::to_kg( $weight ) );
+  }
+
+  /**
+   * $package carries merchant-posted overrides from the AWB metabox (already
+   * range-validated by AwbMetabox::posted_package()): 'weight', 'length', 'width',
+   * 'height'. A posted weight wins outright — including going under the computed
+   * 1.0kg floor — since the merchant is stating the real packed weight; it's only
+   * floored at 0.05 to keep a stray near-zero value out of the SmartShip payload.
+   * Missing keys fall back to the computed weight / the historical 10x10x10 box.
+   */
+  public static function content_from_order( $order, array $package = [] ): array {
+    $weight = isset( $package['weight'] ) ? max( 0.05, (float) $package['weight'] ) : self::order_weight_kg( $order );
 
     $cod = 0.0;
     if ( ! $order->is_paid() || 'cod' === $order->get_payment_method() ) {
@@ -77,9 +90,9 @@ final class AwbPayload {
       'parcels'          => 1,
       'weight'           => $weight,
       'cash_on_delivery' => $cod,
-      'length'           => 10,
-      'width'            => 10,
-      'height'           => 10,
+      'length'           => isset( $package['length'] ) ? (int) $package['length'] : 10,
+      'width'            => isset( $package['width'] ) ? (int) $package['width'] : 10,
+      'height'           => isset( $package['height'] ) ? (int) $package['height'] : 10,
       'insurance'        => 0,
       'iban'             => Settings::iban(),
       'open_package'     => 0,
@@ -99,11 +112,11 @@ final class AwbPayload {
     ];
   }
 
-  public static function build( $order, array $resolved, array $sender, int $courier_id ): array {
+  public static function build( $order, array $resolved, array $sender, int $courier_id, array $package = [] ): array {
     return [
       'recipient'  => self::recipient_from_order( $order, $resolved ),
       'sender'     => self::sender_from_account( $sender ),
-      'content'    => self::content_from_order( $order ),
+      'content'    => self::content_from_order( $order, $package ),
       'courier_id' => $courier_id,
     ];
   }

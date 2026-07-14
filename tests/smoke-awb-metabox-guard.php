@@ -96,4 +96,31 @@ assert_same( '0', $resolved['sector'], 'invalid posted sector: ignored, falls ba
 
 unset( $_POST['county_id'], $_POST['city_id'], $_POST['sector'] );
 
+// 4) posted_package(): valid values pass through; out-of-range weight/dims are dropped
+//    (never reach AwbPayload — a garbage packed weight/size must not silently ship).
+$posted_package = new ReflectionMethod( AwbMetabox::class, 'posted_package' );
+$posted_package->setAccessible( true );
+
+$_POST = [ 'weight' => '0.5', 'length' => '30', 'width' => '20', 'height' => '15' ];
+assert_same(
+  [ 'weight' => 0.5, 'length' => 30, 'width' => 20, 'height' => 15 ],
+  $posted_package->invoke( $metabox ),
+  'posted_package: all valid values pass through'
+);
+
+$_POST = [ 'weight' => '0.01', 'length' => '0', 'width' => '999', 'height' => '15' ];
+assert_same(
+  [ 'height' => 15 ],
+  $posted_package->invoke( $metabox ),
+  'posted_package: out-of-range weight (0.01) and dims (0, 999) dropped; valid height kept'
+);
+
+$_POST = [ 'weight' => '500' ];
+assert_same( [], $posted_package->invoke( $metabox ), 'posted_package: weight over 100 dropped' );
+
+$_POST = [];
+assert_same( [], $posted_package->invoke( $metabox ), 'posted_package: nothing posted -> empty' );
+
+unset( $_POST['weight'], $_POST['length'], $_POST['width'], $_POST['height'] );
+
 echo "smoke-awb-metabox-guard: all assertions passed\n";

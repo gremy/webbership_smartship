@@ -71,6 +71,7 @@ final class AwbMetabox {
         'selectSectorFirst' => __( 'Select the Bucharest sector first.', 'webbership-smartship' ),
         'noCounty'          => __( 'SmartShip ships within Romania only, and the order county was not recognized.', 'webbership-smartship' ),
         'requestFailed'     => __( 'Request failed — reload the page and try again.', 'webbership-smartship' ),
+        'packageChanged'    => __( 'Package changed — click Estimate again.', 'webbership-smartship' ),
       ],
     ] );
   }
@@ -105,7 +106,7 @@ final class AwbMetabox {
     $payload  = [
       'recipient' => AwbPayload::recipient_from_order( $order, $resolved ),
       'sender'    => AwbPayload::sender_from_account( $sender ),
-      'content'   => AwbPayload::content_from_order( $order ),
+      'content'   => AwbPayload::content_from_order( $order, $this->posted_package() ),
     ];
     $res = $client->cost( $payload );
     if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Estimate failed.', 'webbership-smartship' ), 'errors' => $res['errors'] ?? [] ] ); }
@@ -137,7 +138,7 @@ final class AwbMetabox {
 
     $client  = new SmartShipClient( Settings::api_key() );
     $sender  = self::pick_sender( (array) ( $client->get_senders()['senders'] ?? [] ), absint( $_POST['sender_id'] ?? 0 ) );
-    $payload = AwbPayload::build( $order, $resolved, $sender, $courier_id );
+    $payload = AwbPayload::build( $order, $resolved, $sender, $courier_id, $this->posted_package() );
     $res     = $client->create_awb( $payload );
     if ( empty( $res['ok'] ) ) {
       wp_send_json_error( [ 'message' => $res['message'] ?: __( 'AWB issue failed.', 'webbership-smartship' ), 'errors' => $res['errors'] ?? [], 'code' => $res['code'] ?? '' ] );
@@ -253,6 +254,31 @@ final class AwbMetabox {
   }
 
   /**
+   * Merchant-posted package overrides from the Package fieldset, range-validated —
+   * only valid keys are returned, so AwbPayload::content_from_order()'s isset()
+   * checks fall back to the computed weight / the historical 10x10x10 box for
+   * anything absent or out of range.
+   */
+  private function posted_package(): array {
+    $package = [];
+    if ( isset( $_POST['weight'] ) && '' !== $_POST['weight'] ) {
+      $weight = (float) $_POST['weight'];
+      if ( $weight >= 0.05 && $weight <= 100 ) {
+        $package['weight'] = $weight;
+      }
+    }
+    foreach ( [ 'length', 'width', 'height' ] as $dim ) {
+      if ( isset( $_POST[ $dim ] ) && '' !== $_POST[ $dim ] ) {
+        $value = (int) $_POST[ $dim ];
+        if ( $value >= 1 && $value <= 250 ) {
+          $package[ $dim ] = $value;
+        }
+      }
+    }
+    return $package;
+  }
+
+  /**
    * Street address lines used to source a Bucharest sector, from the SAME source
    * (shipping vs billing) the recipient payload uses — a customer who didn't tick
    * "ship to a different address" has the sector sitting in the billing lines.
@@ -305,12 +331,47 @@ final class AwbMetabox {
       $this->render_easybox_handoff( $order );
     } else {
       echo '<p class="description">' . esc_html__( 'Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip.', 'webbership-smartship' ) . '</p>';
+      $this->render_package_fields( $order );
       echo '<button type="button" class="button webbership-ss-estimate">' . esc_html__( 'Estimate', 'webbership-smartship' ) . '</button>';
       echo '<div class="webbership-ss-sender"></div>';
       echo '<div class="webbership-ss-couriers"></div>';
       echo '<div class="webbership-ss-msg"></div>';
     }
     echo '</div>';
+  }
+
+  /**
+   * Merchant-controlled weight/dims, prefilled from the order and (if any box
+   * presets are configured) a preset picker. The fields stay editable after a
+   * preset is chosen — the preset is a starting point, not a mode.
+   */
+  private function render_package_fields( $order ): void {
+    $weight = AwbPayload::order_weight_kg( $order );
+    $boxes  = Settings::boxes();
+    echo '<fieldset class="webbership-ss-package">';
+    echo '<p><strong>' . esc_html__( 'Package', 'webbership-smartship' ) . '</strong></p>';
+    if ( $boxes ) {
+      echo '<p><label>' . esc_html__( 'Box', 'webbership-smartship' ) . ' ';
+      echo '<select class="webbership-ss-box-preset">';
+      echo '<option value="">' . esc_html__( '— Box —', 'webbership-smartship' ) . '</option>';
+      foreach ( $boxes as $i => $box ) {
+        $label = sprintf( '%1$s — %2$d×%3$d×%4$d', $box['name'], $box['length'], $box['width'], $box['height'] );
+        echo '<option value="' . esc_attr( (string) $i ) . '"'
+          . ' data-l="' . esc_attr( (string) $box['length'] ) . '"'
+          . ' data-w="' . esc_attr( (string) $box['width'] ) . '"'
+          . ' data-h="' . esc_attr( (string) $box['height'] ) . '"'
+          . ' data-kg="' . esc_attr( (string) $box['weight'] ) . '"'
+          . '>' . esc_html( $label ) . '</option>';
+      }
+      echo '</select></label></p>';
+    }
+    echo '<p><label>' . esc_html__( 'Weight (kg)', 'webbership-smartship' ) . ' ';
+    echo '<input type="number" step="0.01" min="0.1" class="webbership-ss-weight" data-base="' . esc_attr( (string) $weight ) . '" value="' . esc_attr( (string) $weight ) . '" /></label></p>';
+    echo '<p><label>' . esc_html__( 'Dimensions (cm, L×W×H)', 'webbership-smartship' ) . ' ';
+    echo '<input type="number" step="1" min="1" class="webbership-ss-length" value="10" /> × ';
+    echo '<input type="number" step="1" min="1" class="webbership-ss-width" value="10" /> × ';
+    echo '<input type="number" step="1" min="1" class="webbership-ss-height" value="10" /></label></p>';
+    echo '</fieldset>';
   }
 
   /**

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-14T17:51:03+00:00\n"
+"POT-Creation-Date: 2026-07-14T18:14:06+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -60,76 +60,84 @@ msgstr ""
 msgid "You do not have permission to do this."
 msgstr ""
 
-#: includes/Settings/class-settings.php:87
-#: includes/Settings/class-settings.php:88
-#: includes/Settings/class-settings.php:136
+#: includes/Settings/class-settings.php:131
+#: includes/Settings/class-settings.php:132
+#: includes/Settings/class-settings.php:182
 #: modules/checkout-rates/class-shipping-method.php:52
 msgid "SmartShip"
 msgstr ""
 
-#: includes/Settings/class-settings.php:122
+#: includes/Settings/class-settings.php:166
 msgid "IBAN looks invalid — expected RO + 22 characters."
 msgstr ""
 
-#: includes/Settings/class-settings.php:132
+#: includes/Settings/class-settings.php:178
 msgid "You do not have permission to view this page."
 msgstr ""
 
-#: includes/Settings/class-settings.php:138
+#: includes/Settings/class-settings.php:184
 msgid "Connect your SmartShip.ro account below. Then turn on live checkout rates under WooCommerce → Settings → Shipping (add the \"SmartShip Live Rates\" method to a zone), and issue AWBs from the \"SmartShip AWB\" box on each order."
 msgstr ""
 
-#: includes/Settings/class-settings.php:147
+#: includes/Settings/class-settings.php:193
 msgid "SmartShip connection OK."
 msgstr ""
 
 #. translators: %s: error message from SmartShip.
-#: includes/Settings/class-settings.php:150
+#: includes/Settings/class-settings.php:196
 #, php-format
 msgid "SmartShip connection failed: %s"
 msgstr ""
 
-#: includes/Settings/class-settings.php:161
+#: includes/Settings/class-settings.php:207
 msgid "API key"
 msgstr ""
 
-#: includes/Settings/class-settings.php:166
+#: includes/Settings/class-settings.php:212
 msgid "Defined in wp-config.php (WEBBERSHIP_SMARTSHIP_API_KEY); the database value is ignored."
 msgstr ""
 
-#: includes/Settings/class-settings.php:177
+#: includes/Settings/class-settings.php:223
 msgid "Find your key in your SmartShip.ro account under API access. The stored key is hidden — leave this blank to keep the current one. After saving, use \"Test connection\" below to verify it."
 msgstr ""
 
-#: includes/Settings/class-settings.php:183
+#: includes/Settings/class-settings.php:229
 msgid "Default sender"
 msgstr ""
 
-#: includes/Settings/class-settings.php:199
+#: includes/Settings/class-settings.php:245
 msgid "The pickup address printed on AWBs and used as the rate origin. Add or edit senders in your SmartShip.ro account."
 msgstr ""
 
-#: includes/Settings/class-settings.php:201
+#: includes/Settings/class-settings.php:247
 msgid "Save a valid API key first, then reload to choose a sender."
 msgstr ""
 
-#: includes/Settings/class-settings.php:206
+#: includes/Settings/class-settings.php:252
 msgid "IBAN (for cash-on-delivery)"
 msgstr ""
 
-#: includes/Settings/class-settings.php:210
+#: includes/Settings/class-settings.php:256
 msgid "Only used for cash-on-delivery (ramburs) orders. SmartShip requires the payout IBAN on every COD shipment, and its API cannot read the one saved on your SmartShip account — so enter the same IBAN here. Leave blank if you do not ship cash-on-delivery."
 msgstr ""
 
-#: includes/Settings/class-settings.php:215
+#: includes/Settings/class-settings.php:261
+msgid "Box sizes"
+msgstr ""
+
+#: includes/Settings/class-settings.php:265
+msgid "One box per line: Name | LxWxH in cm | box weight in kg (optional). Example: Cutie M | 30x20x15 | 0.3. The box weight is added to the products weight when a preset is chosen on an order."
+msgstr ""
+
+#: includes/Settings/class-settings.php:270
 msgid "Debug logging"
 msgstr ""
 
-#: includes/Settings/class-settings.php:219
+#: includes/Settings/class-settings.php:274
 msgid "Log SmartShip API calls to WooCommerce → Status → Logs."
 msgstr ""
 
-#: includes/Settings/class-settings.php:229
+#: includes/Settings/class-settings.php:284
 msgid "Test connection"
 msgstr ""
 
@@ -156,7 +164,7 @@ msgid "Copied!"
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:52
-#: modules/awb/admin/class-awb-metabox.php:209
+#: modules/awb/admin/class-awb-metabox.php:210
 msgid "Enter the AWB number."
 msgstr ""
 
@@ -244,142 +252,166 @@ msgstr ""
 msgid "Request failed — reload the page and try again."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:85
-#: modules/awb/admin/class-awb-metabox.php:117
-#: modules/awb/admin/class-awb-metabox.php:158
-#: modules/awb/admin/class-awb-metabox.php:170
-#: modules/awb/admin/class-awb-metabox.php:182
-#: modules/awb/admin/class-awb-metabox.php:205
+#: modules/awb/admin/class-awb-metabox.php:74
+msgid "Package changed — click Estimate again."
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:86
+#: modules/awb/admin/class-awb-metabox.php:118
+#: modules/awb/admin/class-awb-metabox.php:159
+#: modules/awb/admin/class-awb-metabox.php:171
+#: modules/awb/admin/class-awb-metabox.php:183
+#: modules/awb/admin/class-awb-metabox.php:206
 #: modules/awb/admin/class-awb-print.php:30
 msgid "Forbidden."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:87
-#: modules/awb/admin/class-awb-metabox.php:119
-#: modules/awb/admin/class-awb-metabox.php:172
-#: modules/awb/admin/class-awb-metabox.php:184
-#: modules/awb/admin/class-awb-metabox.php:207
+#: modules/awb/admin/class-awb-metabox.php:88
+#: modules/awb/admin/class-awb-metabox.php:120
+#: modules/awb/admin/class-awb-metabox.php:173
+#: modules/awb/admin/class-awb-metabox.php:185
+#: modules/awb/admin/class-awb-metabox.php:208
 #: modules/awb/admin/class-awb-print.php:35
 msgid "Order not found."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:111
+#: modules/awb/admin/class-awb-metabox.php:112
 msgid "Estimate failed."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:123
+#: modules/awb/admin/class-awb-metabox.php:124
 msgid "This order already has an AWB. Cancel it first to issue a new one."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:128
+#: modules/awb/admin/class-awb-metabox.php:129
 msgid "This is an EasyBox order — create the locker AWB in SmartShip and paste the number back here."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:131
+#: modules/awb/admin/class-awb-metabox.php:132
 msgid "Choose a courier."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:136
+#: modules/awb/admin/class-awb-metabox.php:137
 msgid "Resolve the destination city first."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:143
+#: modules/awb/admin/class-awb-metabox.php:144
 msgid "AWB issue failed."
 msgstr ""
 
 #. translators: 1: AWB number, 2: courier
-#: modules/awb/admin/class-awb-metabox.php:150
+#: modules/awb/admin/class-awb-metabox.php:151
 #, php-format
 msgid "SmartShip AWB %1$s issued (%2$s)."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:161
+#: modules/awb/admin/class-awb-metabox.php:162
 msgid "Could not load cities."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:174
-#: modules/awb/admin/class-awb-metabox.php:186
+#: modules/awb/admin/class-awb-metabox.php:175
+#: modules/awb/admin/class-awb-metabox.php:187
 #: modules/awb/admin/class-awb-print.php:37
 msgid "No AWB on this order."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:176
+#: modules/awb/admin/class-awb-metabox.php:177
 msgid "Status unavailable."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:193
+#: modules/awb/admin/class-awb-metabox.php:194
 #, php-format
 msgid "SmartShip AWB %s removed from this order. If it was already sent to the courier, cancel it in the SmartShip dashboard too."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:195
+#: modules/awb/admin/class-awb-metabox.php:196
 msgid "AWB removed. Cancel it in the SmartShip dashboard if it was already submitted."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:215
+#: modules/awb/admin/class-awb-metabox.php:216
 #, php-format
 msgid "SmartShip EasyBox AWB %s added manually."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:295
+#: modules/awb/admin/class-awb-metabox.php:321
 msgid "AWB:"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:298
+#: modules/awb/admin/class-awb-metabox.php:324
 msgid "Print A4"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:299
+#: modules/awb/admin/class-awb-metabox.php:325
 msgid "Print A6"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:300
+#: modules/awb/admin/class-awb-metabox.php:326
 msgid "Refresh tracking"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:301
+#: modules/awb/admin/class-awb-metabox.php:327
 msgid "Cancel AWB"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:302
+#: modules/awb/admin/class-awb-metabox.php:328
 msgid "Cancel removes the AWB from this order. If it was already handed to the courier, cancel it in the SmartShip dashboard too."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:307
+#: modules/awb/admin/class-awb-metabox.php:333
 msgid "Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:308
+#: modules/awb/admin/class-awb-metabox.php:335
 msgid "Estimate"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:334
+#: modules/awb/admin/class-awb-metabox.php:352
+msgid "Package"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:354
+msgid "Box"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:356
+msgid "— Box —"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:368
+msgid "Weight (kg)"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:370
+msgid "Dimensions (cm, L×W×H)"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:395
 msgid "EasyBox locker"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:339
+#: modules/awb/admin/class-awb-metabox.php:400
 msgid "Recipient"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:341
+#: modules/awb/admin/class-awb-metabox.php:402
 msgid "Copy recipient"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:343
+#: modules/awb/admin/class-awb-metabox.php:404
 msgid "Create the locker AWB in SmartShip, then paste the number back here to enable printing and tracking."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:344
+#: modules/awb/admin/class-awb-metabox.php:405
 msgid "Create EasyBox AWB in SmartShip ↗"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:346
+#: modules/awb/admin/class-awb-metabox.php:407
 msgid "Paste AWB number"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:347
+#: modules/awb/admin/class-awb-metabox.php:408
 msgid "Save AWB"
 msgstr ""
 

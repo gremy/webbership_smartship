@@ -50,7 +50,7 @@ final class Settings {
   }
 
   public static function defaults(): array {
-    return [ 'api_key' => '', 'debug' => 'no', 'sender_id' => 0, 'iban' => '' ];
+    return [ 'api_key' => '', 'debug' => 'no', 'sender_id' => 0, 'iban' => '', 'boxes' => '' ];
   }
 
   public static function get(): array {
@@ -71,6 +71,50 @@ final class Settings {
 
   public static function iban(): string {
     return (string) self::get()['iban'];
+  }
+
+  /** Parsed merchant box presets: `boxes()` reads the stored option, `parse_boxes()` is the pure, WP-free parser. */
+  public static function boxes(): array {
+    return self::parse_boxes( (string) self::get()['boxes'] );
+  }
+
+  /**
+   * Tolerant "Name | LxWxH | weight" line parser. One box per line; blank/invalid
+   * lines are skipped rather than erroring, since this feeds a free-text textarea.
+   * Dim separator accepts x, X or × with optional spaces. Weight is optional
+   * (default 0.0), accepts a comma decimal and an optional trailing "kg".
+   */
+  public static function parse_boxes( string $raw ): array {
+    $boxes = [];
+    foreach ( preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+      $line = trim( $line );
+      if ( '' === $line ) {
+        continue;
+      }
+      $parts = array_map( 'trim', explode( '|', $line ) );
+      if ( count( $parts ) < 2 || '' === $parts[0] ) {
+        continue;
+      }
+      if ( ! preg_match( '/^(\d+)\s*[xX×]\s*(\d+)\s*[xX×]\s*(\d+)$/u', $parts[1], $m ) ) {
+        continue;
+      }
+      $weight = 0.0;
+      if ( isset( $parts[2] ) && '' !== $parts[2] ) {
+        $w = str_replace( ',', '.', trim( str_ireplace( 'kg', '', $parts[2] ) ) );
+        if ( ! is_numeric( $w ) ) {
+          continue;
+        }
+        $weight = (float) $w;
+      }
+      $boxes[] = [
+        'name'   => $parts[0],
+        'length' => (int) $m[1],
+        'width'  => (int) $m[2],
+        'height' => (int) $m[3],
+        'weight' => $weight,
+      ];
+    }
+    return $boxes;
   }
 
   public static function key_is_constant(): bool {
@@ -123,6 +167,8 @@ final class Settings {
       $iban = (string) $current['iban'];
     }
     $out['iban'] = $iban;
+
+    $out['boxes'] = isset( $input['boxes'] ) ? sanitize_textarea_field( (string) $input['boxes'] ) : (string) $current['boxes'];
 
     return $out;
   }
@@ -208,6 +254,15 @@ final class Settings {
               <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION ); ?>[iban]" id="webbership_smartship_iban" value="<?php echo esc_attr( self::iban() ); ?>" placeholder="RO00 BANK 0000 0000 0000 0000" />
               <p class="description" style="max-width:46em">
                 <?php echo esc_html__( 'Only used for cash-on-delivery (ramburs) orders. SmartShip requires the payout IBAN on every COD shipment, and its API cannot read the one saved on your SmartShip account — so enter the same IBAN here. Leave blank if you do not ship cash-on-delivery.', 'webbership-smartship' ); ?>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><label for="webbership_smartship_boxes"><?php echo esc_html__( 'Box sizes', 'webbership-smartship' ); ?></label></th>
+            <td>
+              <textarea name="<?php echo esc_attr( self::OPTION ); ?>[boxes]" id="webbership_smartship_boxes" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( self::get()['boxes'] ); ?></textarea>
+              <p class="description" style="max-width:46em">
+                <?php echo esc_html__( 'One box per line: Name | LxWxH in cm | box weight in kg (optional). Example: Cutie M | 30x20x15 | 0.3. The box weight is added to the products weight when a preset is chosen on an order.', 'webbership-smartship' ); ?>
               </p>
             </td>
           </tr>
