@@ -42,6 +42,9 @@ final class Plugin {
 
     $this->modules[] = new \Webbership\Smartship\Modules\EasyBox\EasyBoxModule();
 
+    require_once WEBBERSHIP_SMARTSHIP_DIR . 'modules/fulfillment/class-fulfillment-module.php';
+    $this->modules[] = new \Webbership\Smartship\Modules\Fulfillment\FulfillmentModule();
+
     foreach ( $this->modules as $module ) {
       if ( $module->is_supported() ) {
         $module->register_hooks();
