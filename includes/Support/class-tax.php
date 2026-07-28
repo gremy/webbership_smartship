@@ -16,6 +16,23 @@ final class Tax {
    * based on the store's WooCommerce tax configuration. WooCommerce treats shipping
    * costs as tax-exclusive and adds shipping tax on top at checkout when taxes are on.
    */
+
+  /**
+   * Wraps WC_Tax::get_shipping_tax_rates(). When the "Shipping tax class" option is
+   * 'inherit' and no cart exists (wp-admin, REST, CLI — e.g. loading the shipping
+   * method's admin settings form), core's get_shipping_tax_class_from_cart_items()
+   * dereferences WC()->cart with no null check and fatals. Pass the standard tax
+   * class explicitly in that case so core skips the cart lookup entirely.
+   */
+  private static function shipping_tax_rates(): array {
+    $tax_class = null;
+    $cart = function_exists( 'WC' ) && WC() ? ( WC()->cart ?? null ) : null;
+    if ( ! $cart && 'inherit' === get_option( 'woocommerce_shipping_tax_class' ) ) {
+      $tax_class = ''; // ponytail: standard tax class fallback, not a real cart to inherit from anyway.
+    }
+    return (array) \WC_Tax::get_shipping_tax_rates( $tax_class );
+  }
+
   /**
    * Returns the factor by which to divide an API cost that already includes VAT,
    * so WooCommerce can add the correct tax on top without double-taxing.
@@ -35,7 +52,7 @@ final class Tax {
     // ponytail: sums rates as flat (additive), not compound — correct for this
     // store's current flat-VAT setup. If a compound shipping tax class is ever
     // configured, this needs to multiply factors sequentially instead.
-    $total = array_sum( array_column( (array) \WC_Tax::get_shipping_tax_rates(), 'rate' ) );
+    $total = array_sum( array_column( self::shipping_tax_rates(), 'rate' ) );
     return $total > 0 ? 1 + $total / 100 : 1.0;
   }
 
@@ -50,7 +67,7 @@ final class Tax {
         static function ( $r ) {
           return (float) ( $r['rate'] ?? 0 );
         },
-        (array) \WC_Tax::get_shipping_tax_rates()
+        self::shipping_tax_rates()
       ) ) );
       if ( 1 === count( $pcts ) && $pcts[0] > 0 ) {
         $rate = rtrim( rtrim( number_format( $pcts[0], 2 ), '0' ), '.' ) . '%';

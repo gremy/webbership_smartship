@@ -5,6 +5,7 @@ define( 'ABSPATH', __DIR__ );
 
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
+function __( $text, $domain = 'default' ) { return $text; }
 
 // Minimal stand-in for WP core's sanitize_text_field(): strips tags, collapses whitespace.
 function sanitize_text_field( string $s ): string {
@@ -17,9 +18,21 @@ function wp_strip_all_tags( string $s ): string {
 class WC_Tax {
   public static array $rates = [];
 
-  public static function get_shipping_tax_rates(): array {
+  public static function get_shipping_tax_rates( $tax_class = null ): array {
+    // Mirrors the real WooCommerce bug: when the shipping tax class is 'inherit'
+    // and no explicit tax_class is passed, core falls through to a cart lookup
+    // that fatals if WC()->cart is null. Reproduced here so the guard in
+    // Support\Tax is actually exercised, not just assumed.
+    if ( null === $tax_class && 'inherit' === get_option( 'woocommerce_shipping_tax_class' ) ) {
+      $cart = WC()->cart ?? null;
+      $cart->get_cart(); // fatal: call to a member function on null.
+    }
     return self::$rates;
   }
+}
+
+function get_option( string $name ) {
+  return $GLOBALS['webbership_smoke_options'][ $name ] ?? false;
 }
 
 class SmokeCustomer {
@@ -110,5 +123,19 @@ assert_true( abs( Tax::shipping_vat_divisor() - 1.21 ) < 0.001, 'shipping VAT di
 
 $GLOBALS['webbership_smoke_wc'] = (object) [ 'customer' => new SmokeCustomer( true ) ];
 assert_same( 1.0, Tax::shipping_vat_divisor(), 'VAT-exempt customers keep API shipping cost intact' );
+
+// Regression: 'inherit' shipping tax class + no cart (wp-admin/REST/CLI) must not fatal.
+// Before the fix, this reproduced "Call to a member function get_cart() on null".
+$GLOBALS['webbership_smoke_options']['woocommerce_shipping_tax_class'] = 'inherit';
+$GLOBALS['webbership_smoke_wc'] = (object) []; // no cart property at all, like wp-admin context
+\WC_Tax::$rates = [ [ 'rate' => 21 ] ];
+try {
+  $divisor = Tax::shipping_vat_divisor();
+  $note    = Tax::shipping_note();
+} catch ( \Throwable $e ) {
+  throw new RuntimeException( "Tax methods must not fatal without a cart: {$e->getMessage()}" );
+}
+assert_true( abs( $divisor - 1.21 ) < 0.001, 'no-cart + inherit still resolves the standard tax class rate' );
+assert_true( is_string( $note ) && '' !== $note, 'shipping_note() returns a note without a cart' );
 
 echo "smoke-rate-calculator: all assertions passed\n";
