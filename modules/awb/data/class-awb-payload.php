@@ -15,8 +15,33 @@ use Webbership\Smartship\Settings\Settings;
 final class AwbPayload {
 
   /**
-   * Caller must gate on $resolved['confident'] before building: a resolution miss
-   * yields city => 0, which SmartShip rejects.
+   * SmartShip requires a postal code for non-RO recipients (its API rejects with
+   * error 20237 otherwise), but the exact JSON key it expects hasn't been confirmed
+   * against the live API/vendor docs yet — 'postal_code' is a provisional guess.
+   * Centralized here so that when SmartShip confirms the real key, this is the only line to change.
+   */
+  public const EXTERNAL_POSTCODE_FIELD = 'postal_code';
+
+  /** RO ships through CityResolver's numeric city ids; everything else is the free-text international path. */
+  public static function is_domestic( string $country ): bool {
+    return '' === $country || 'RO' === strtoupper( trim( $country ) );
+  }
+
+  /** Recipient country from the order: shipping first, billing fallback, 'RO' default. */
+  public static function order_country( $order ): string {
+    $country = (string) ( $order->get_shipping_country() ?: $order->get_billing_country() );
+    return '' !== $country ? $country : 'RO';
+  }
+
+  /** International recipients have no city-id resolution step — gate on city text + postal code instead. */
+  public static function international_ready( array $resolved ): bool {
+    return '' !== trim( (string) ( $resolved['city_text'] ?? '' ) ) && '' !== trim( (string) ( $resolved['postcode'] ?? '' ) );
+  }
+
+  /**
+   * Caller must gate on $resolved['confident'] before building for a domestic (RO)
+   * order: a resolution miss yields city => 0, which SmartShip rejects. For a
+   * non-RO order, gate on international_ready( $resolved ) instead.
    */
   public static function recipient_from_order( $order, array $resolved ): array {
     $name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
@@ -30,14 +55,37 @@ final class AwbPayload {
     $addr2   = $use_shipping ? $order->get_shipping_address_2() : $order->get_billing_address_2();
     $address = trim( $addr1 . ( $addr2 !== '' ? ' ' . $addr2 : '' ) );
     $phone   = $order->get_shipping_phone() ?: $order->get_billing_phone();
-    $country = (string) ( $order->get_shipping_country() ?: $order->get_billing_country() );
+    $country = self::order_country( $order );
+
+    if ( ! self::is_domestic( $country ) ) {
+      // No CityResolver for non-RO — its geolocation endpoints are RO-only. City is
+      // free text (merchant-editable in the metabox); SmartShip requires a postal
+      // code for external destinations, sent under the provisional key above.
+      $city     = isset( $resolved['city_text'] ) && '' !== (string) $resolved['city_text']
+        ? (string) $resolved['city_text']
+        : (string) ( $order->get_shipping_city() ?: $order->get_billing_city() );
+      $postcode = isset( $resolved['postcode'] ) && '' !== (string) $resolved['postcode']
+        ? (string) $resolved['postcode']
+        : (string) ( $order->get_shipping_postcode() ?: $order->get_billing_postcode() );
+      return [
+        'name'    => $name,
+        'address' => (string) $address,
+        'email'   => (string) $order->get_billing_email(),
+        'city'    => $city,
+        'phone'   => (string) $phone,
+        'country' => $country,
+        'sector'  => '0',
+        self::EXTERNAL_POSTCODE_FIELD => $postcode,
+      ];
+    }
+
     return [
       'name'    => $name,
       'address' => (string) $address,
       'email'   => (string) $order->get_billing_email(),
       'city'    => isset( $resolved['city_id'] ) ? (int) $resolved['city_id'] : 0,
       'phone'   => (string) $phone,
-      'country' => '' !== $country ? $country : 'RO',
+      'country' => $country,
       'sector'  => self::canonical_sector( $resolved['sector'] ?? '0' ),
     ];
   }

@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 final class SmartShipClient {
   public const BASE_URL     = 'https://api.smartship.ro';
   public const TIMEOUT      = 20; // admin / back-office calls
-  public const RATE_TIMEOUT = 3;  // checkout /cost call
+  public const RATE_TIMEOUT = 10; // checkout /cost call (was 3s: a live probe timed out against the real API while a 20s retry succeeded)
 
   private string $api_key;
   private string $base_url;

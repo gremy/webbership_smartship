@@ -70,9 +70,10 @@ final class AwbMetabox {
         'pickSector'        => __( 'Pick the Bucharest sector, then Re-estimate.', 'webbership-smartship' ),
         'selectSector'      => __( '— Select sector —', 'webbership-smartship' ),
         'selectSectorFirst' => __( 'Select the Bucharest sector first.', 'webbership-smartship' ),
-        'noCounty'          => __( 'SmartShip ships within Romania only, and the order county was not recognized.', 'webbership-smartship' ),
+        'noCounty'          => __( "Couldn't determine the destination county for this order.", 'webbership-smartship' ),
         'requestFailed'     => __( 'Request failed — reload the page and try again.', 'webbership-smartship' ),
         'packageChanged'    => __( 'Package changed — click Estimate again.', 'webbership-smartship' ),
+        'enterCityPostcode' => __( 'Enter the destination city and postal code first.', 'webbership-smartship' ),
       ],
     ] );
   }
@@ -92,6 +93,23 @@ final class AwbMetabox {
     $resolved = $this->resolve_for( $order );
     $senders  = (array) ( $client->get_senders()['senders'] ?? [] );
     $sender   = self::pick_sender( $senders, absint( $_POST['sender_id'] ?? 0 ) );
+
+    // International: no CityResolver/city picker — gated on city text + postal code
+    // (posted from the metabox's plain text inputs) instead of a resolved city id.
+    if ( ! AwbPayload::is_domestic( (string) ( $resolved['country'] ?? 'RO' ) ) ) {
+      if ( ! AwbPayload::international_ready( $resolved ) ) {
+        wp_send_json_error( [ 'message' => __( 'Enter the destination city and postal code first.', 'webbership-smartship' ) ] );
+      }
+      $payload = [
+        'recipient' => AwbPayload::recipient_from_order( $order, $resolved ),
+        'sender'    => AwbPayload::sender_from_account( $sender ),
+        'content'   => AwbPayload::content_from_order( $order, $this->posted_package() ),
+      ];
+      $res = $client->cost( $payload );
+      if ( empty( $res['ok'] ) ) { wp_send_json_error( [ 'message' => $res['message'] ?: __( 'Estimate failed.', 'webbership-smartship' ), 'errors' => $res['errors'] ?? [] ] ); }
+      wp_send_json_success( [ 'costs' => $res['costs'] ?? ( $res['response']['costs'] ?? [] ), 'resolved' => $resolved, 'senders' => self::senders_for_js( $senders ), 'sender_id' => (int) ( $sender['id'] ?? 0 ) ] );
+    }
+
     // No city id (resolver not confident, no override posted) → /cost with city:0
     // would just fail. Return needs_city so the JS renders the city picker instead.
     if ( empty( $resolved['city_id'] ) ) {
@@ -133,9 +151,13 @@ final class AwbMetabox {
     if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'webbership-smartship' ) ] ); }
 
     $resolved = $this->resolve_for( $order );
-    // Not confident also catches the Bucharest-sector-unknown case (city_id set,
-    // sector missing) — issuing then would send sector '0' and SmartShip rejects it.
-    if ( empty( $resolved['city_id'] ) || empty( $resolved['confident'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'webbership-smartship' ) ] ); }
+    if ( AwbPayload::is_domestic( (string) ( $resolved['country'] ?? 'RO' ) ) ) {
+      // Not confident also catches the Bucharest-sector-unknown case (city_id set,
+      // sector missing) — issuing then would send sector '0' and SmartShip rejects it.
+      if ( empty( $resolved['city_id'] ) || empty( $resolved['confident'] ) ) { wp_send_json_error( [ 'message' => __( 'Resolve the destination city first.', 'webbership-smartship' ) ] ); }
+    } elseif ( ! AwbPayload::international_ready( $resolved ) ) {
+      wp_send_json_error( [ 'message' => __( 'Enter the destination city and postal code first.', 'webbership-smartship' ) ] );
+    }
 
     $client  = new SmartShipClient( Settings::api_key() );
     $sender  = self::pick_sender( (array) ( $client->get_senders()['senders'] ?? [] ), absint( $_POST['sender_id'] ?? 0 ) );
@@ -242,6 +264,16 @@ final class AwbMetabox {
    * couldn't find "Sector N" in the address text.
    */
   private function resolve_for( $order ): array {
+    $country = AwbPayload::order_country( $order );
+    if ( ! AwbPayload::is_domestic( $country ) ) {
+      // No CityResolver for non-RO — its geolocation endpoints are RO-only. The
+      // metabox renders plain city/postal-code text inputs for these orders instead
+      // of the county/city picker; a posted edit wins over the order's own address.
+      $city_text = isset( $_POST['city_text'] ) ? sanitize_text_field( (string) $_POST['city_text'] ) : (string) ( $order->get_shipping_city() ?: $order->get_billing_city() );
+      $postcode  = isset( $_POST['postcode'] ) ? sanitize_text_field( (string) $_POST['postcode'] ) : (string) ( $order->get_shipping_postcode() ?: $order->get_billing_postcode() );
+      return [ 'country' => $country, 'confident' => true, 'city_id' => 0, 'sector' => '0', 'city_text' => $city_text, 'postcode' => $postcode ];
+    }
+
     $county = isset( $_POST['county_id'] ) ? absint( $_POST['county_id'] ) : 0;
     $city   = isset( $_POST['city_id'] ) ? absint( $_POST['city_id'] ) : 0;
     $sector = self::posted_sector();
@@ -261,6 +293,7 @@ final class AwbMetabox {
         $resolved['confident'] = true;
       }
     }
+    $resolved['country'] = $country;
     return $resolved;
   }
 
@@ -348,6 +381,9 @@ final class AwbMetabox {
       $this->render_easybox_handoff( $order );
     } else {
       echo '<p class="description">' . esc_html__( 'Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip.', 'webbership-smartship' ) . '</p>';
+      if ( ! AwbPayload::is_domestic( AwbPayload::order_country( $order ) ) ) {
+        $this->render_international_fields( $order );
+      }
       $this->render_package_fields( $order );
       echo '<button type="button" class="button webbership-ss-estimate">' . esc_html__( 'Estimate', 'webbership-smartship' ) . '</button>';
       echo '<div class="webbership-ss-sender"></div>';
@@ -356,6 +392,22 @@ final class AwbMetabox {
       $this->render_paste_back();
     }
     echo '</div>';
+  }
+
+  /**
+   * International destination: no county/city picker (SmartShip's geolocation
+   * lookup is RO-only) — plain, prefilled, merchant-editable text inputs instead.
+   * City is free text; the postal code is required by SmartShip for non-RO recipients.
+   */
+  private function render_international_fields( $order ): void {
+    $city     = (string) ( $order->get_shipping_city() ?: $order->get_billing_city() );
+    $postcode = (string) ( $order->get_shipping_postcode() ?: $order->get_billing_postcode() );
+    echo '<fieldset class="webbership-ss-international">';
+    echo '<p><label>' . esc_html__( 'City', 'webbership-smartship' ) . ' ';
+    echo '<input type="text" class="webbership-ss-city-text" value="' . esc_attr( $city ) . '" /></label></p>';
+    echo '<p><label>' . esc_html__( 'Postal code', 'webbership-smartship' ) . ' ';
+    echo '<input type="text" class="webbership-ss-postcode" value="' . esc_attr( $postcode ) . '" /></label></p>';
+    echo '</fieldset>';
   }
 
   /**

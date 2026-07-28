@@ -110,12 +110,6 @@ assert_same( 16, $r[0]['courier_id'], 'only the valid-cost row survives' );
 $r = RateCalculator::build_rates( [ 'garbage', [ 'courier_id' => 1, 'courier_name' => 'ok', 'cost' => 5 ] ], [] );
 assert_same( 1, count( $r ), 'skip non-array row' );
 
-// fallback rate.
-$f = RateCalculator::fallback_rate( [ 'fallback_amount' => 19.99, 'fallback_title' => 'Curier standard' ] );
-assert_same( 'webbership_smartship:fallback', $f['id'], 'fallback id' );
-assert_same( 'Curier standard', $f['label'], 'fallback label' );
-assert_true( abs( $f['cost'] - 19.99 ) < 0.001, 'fallback cost' );
-
 // VAT-inclusive API costs are divided only when WooCommerce will add shipping tax.
 $GLOBALS['webbership_smoke_wc'] = (object) [ 'customer' => new SmokeCustomer( false ) ];
 \WC_Tax::$rates = [ [ 'rate' => 21 ] ];

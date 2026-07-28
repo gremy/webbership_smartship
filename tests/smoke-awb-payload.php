@@ -48,6 +48,10 @@ namespace {
     public function get_billing_phone() { return $this->d['b_phone'] ?? ''; }
     public function get_shipping_country() { return $this->d['s_country'] ?? ''; }
     public function get_billing_country() { return $this->d['b_country'] ?? ''; }
+    public function get_shipping_city() { return $this->d['s_city'] ?? ''; }
+    public function get_billing_city() { return $this->d['b_city'] ?? ''; }
+    public function get_shipping_postcode() { return $this->d['s_postcode'] ?? ''; }
+    public function get_billing_postcode() { return $this->d['b_postcode'] ?? ''; }
     public function get_total() { return $this->d['total'] ?? '0'; }
     public function get_payment_method() { return $this->d['pay'] ?? ''; }
     public function is_paid() { return $this->d['paid'] ?? false; }
@@ -84,6 +88,46 @@ namespace {
   $obill = new FakeOrder( [ 'b_first' => 'Jane', 'b_last' => 'Doe', 'b_addr' => 'Str. C 3', 'b_country' => 'FR' ] );
   $recbill = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $obill, [ 'city_id' => 1 ] );
   assert_same( 'FR', $recbill['country'], 'recipient country: falls back to billing country' );
+
+  // International (non-RO) recipient: no CityResolver/numeric-id path — city is free
+  // text from the order (or a metabox-posted override via $resolved), and the postal
+  // code SmartShip requires for external destinations rides under the centralized,
+  // still-unverified provisional key.
+  assert_true( Webbership\Smartship\Modules\Awb\Data\AwbPayload::EXTERNAL_POSTCODE_FIELD === 'postal_code', 'external postcode field: provisional key is postal_code' );
+
+  $ode2 = new FakeOrder( [ 's_first' => 'Max', 's_last' => 'Mustermann', 's_addr' => 'Str. B 2', 's_country' => 'DE', 's_city' => 'Berlin', 's_postcode' => '10115' ] );
+  $recde2 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $ode2, [] );
+  assert_same( 'DE', $recde2['country'], 'DE order: country DE' );
+  assert_same( 'Berlin', $recde2['city'], 'DE order: city is free text from the order, not a numeric id' );
+  assert_same( '10115', $recde2[ Webbership\Smartship\Modules\Awb\Data\AwbPayload::EXTERNAL_POSTCODE_FIELD ], 'DE order: postcode under the provisional key' );
+  assert_same( '0', $recde2['sector'], 'DE order: sector is the RO-irrelevant default' );
+
+  // A metabox-posted city/postcode override (merchant edit) wins over the order's own address.
+  $recde3 = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $ode2, [ 'city_text' => 'Munchen', 'postcode' => '80331' ] );
+  assert_same( 'Munchen', $recde3['city'], 'DE order: posted city_text override wins over the order city' );
+  assert_same( '80331', $recde3[ Webbership\Smartship\Modules\Awb\Data\AwbPayload::EXTERNAL_POSTCODE_FIELD ], 'DE order: posted postcode override wins' );
+
+  // RO order: unchanged numeric-city behavior — is_domestic() must not disturb the
+  // existing resolved-city-id path exercised at the top of this file ($rec above).
+  assert_same( 263852, $rec['city'], 'RO order: still a numeric resolved city id (unchanged)' );
+  assert_true( ! array_key_exists( Webbership\Smartship\Modules\Awb\Data\AwbPayload::EXTERNAL_POSTCODE_FIELD, $rec ), 'RO order: no provisional postcode key in the payload' );
+
+  // Missing postcode on a non-RO order: the payload builder itself stays a pure
+  // builder (it always returns a shape — an empty postcode string, never a fatal),
+  // but AwbPayload::international_ready() is how callers (the metabox) refuse to
+  // issue — mirrors how the RO path is gated on $resolved['confident'].
+  $ode_no_postcode = new FakeOrder( [ 's_first' => 'No', 's_last' => 'Postcode', 's_addr' => 'Str. D 4', 's_country' => 'DE', 's_city' => 'Hamburg' ] );
+  $recde_no_postcode = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $ode_no_postcode, [] );
+  assert_same( '', $recde_no_postcode[ Webbership\Smartship\Modules\Awb\Data\AwbPayload::EXTERNAL_POSTCODE_FIELD ], 'DE order: no postcode anywhere still builds (empty string, no fatal)' );
+  assert_true( ! Webbership\Smartship\Modules\Awb\Data\AwbPayload::international_ready( [ 'city_text' => 'Berlin', 'postcode' => '' ] ), 'international_ready: refuses when postcode is missing' );
+  assert_true( ! Webbership\Smartship\Modules\Awb\Data\AwbPayload::international_ready( [ 'city_text' => '', 'postcode' => '10115' ] ), 'international_ready: refuses when city is missing' );
+  assert_true( Webbership\Smartship\Modules\Awb\Data\AwbPayload::international_ready( [ 'city_text' => 'Berlin', 'postcode' => '10115' ] ), 'international_ready: ready when both are present' );
+
+  // is_domestic(): RO (and the empty/unset default) are domestic; everything else isn't.
+  assert_true( Webbership\Smartship\Modules\Awb\Data\AwbPayload::is_domestic( 'RO' ), 'is_domestic: RO' );
+  assert_true( Webbership\Smartship\Modules\Awb\Data\AwbPayload::is_domestic( 'ro' ), 'is_domestic: case-insensitive' );
+  assert_true( Webbership\Smartship\Modules\Awb\Data\AwbPayload::is_domestic( '' ), 'is_domestic: empty defaults to domestic' );
+  assert_true( ! Webbership\Smartship\Modules\Awb\Data\AwbPayload::is_domestic( 'DE' ), 'is_domestic: DE is not domestic' );
 
   // recipient: address_2 joined to address_1 from the same (shipping) source.
   $oa = new FakeOrder( [ 's_addr' => 'Str. A 1', 's_addr2' => 'Bl. 2 Ap. 3' ] );

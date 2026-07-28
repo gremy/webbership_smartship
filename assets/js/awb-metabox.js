@@ -19,6 +19,15 @@
     } );
   }
 
+  // International destination fields (city/postcode as plain text): only present
+  // when the order's shipping country isn't RO (see AwbMetabox::render_international_fields()).
+  function addRecipientOverrideData( data ) {
+    var $city = $( '.webbership-ss-city-text' );
+    var $postcode = $( '.webbership-ss-postcode' );
+    if ( $city.length ) { data.city_text = $.trim( $city.val() ); }
+    if ( $postcode.length ) { data.postcode = $.trim( $postcode.val() ); }
+  }
+
   function runEstimate() {
     var $msg = $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.estimating );
     var data = { action: 'webbership_smartship_estimate', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId() };
@@ -26,6 +35,7 @@
     if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
     addPackageData( data );
+    addRecipientOverrideData( data );
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $msg.text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       renderSenderPicker( r.data.senders || [], r.data.sender_id || 0 );
@@ -164,7 +174,7 @@
     packageChanged();
   } );
 
-  $( document ).on( 'input', '.webbership-ss-weight, .webbership-ss-length, .webbership-ss-width, .webbership-ss-height', packageChanged );
+  $( document ).on( 'input', '.webbership-ss-weight, .webbership-ss-length, .webbership-ss-width, .webbership-ss-height, .webbership-ss-city-text, .webbership-ss-postcode', packageChanged );
 
   $( document ).on( 'change', '.webbership-ss-sector', function () {
     override.sector = $( this ).val() || '';
@@ -204,12 +214,19 @@
     if ( $( '.webbership-ss-sector' ).length && ! override.sector ) {
       $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.selectSectorFirst ); return;
     }
+    // International destination fields shown but city or postcode left blank →
+    // don't issue with an incomplete address (SmartShip requires both).
+    if ( ( $( '.webbership-ss-city-text' ).length && ! $.trim( $( '.webbership-ss-city-text' ).val() ) )
+      || ( $( '.webbership-ss-postcode' ).length && ! $.trim( $( '.webbership-ss-postcode' ).val() ) ) ) {
+      $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.enterCityPostcode ); return;
+    }
     $( '.webbership-ss-msg' ).text( WebbershipSmartShip.i18n.issuing );
     var data = { action: 'webbership_smartship_issue', _ajax_nonce: WebbershipSmartShip.nonce, order_id: orderId(), courier_id: courier };
     if ( override.county_id && override.city_id ) { data.county_id = override.county_id; data.city_id = override.city_id; }
     if ( override.sector ) { data.sector = override.sector; }
     if ( senderId ) { data.sender_id = senderId; }
     addPackageData( data );
+    addRecipientOverrideData( data );
     $.post( WebbershipSmartShip.ajax, data ).done( function ( r ) {
       if ( ! r.success ) { $( '.webbership-ss-msg' ).text( r.data && r.data.message ? r.data.message : WebbershipSmartShip.i18n.failed ); return; }
       window.location.reload();

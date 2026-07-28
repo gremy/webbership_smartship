@@ -25,7 +25,7 @@ final class RateCalculator {
         continue;
       }
       // A row without a numeric cost must NOT become a free (0) rate — skip it.
-      // If every row is invalid, the empty result triggers the caller's fallback.
+      // If every row is invalid, the caller sees an empty rates array and adds none.
       if ( ! isset( $c['cost'] ) || ! is_numeric( $c['cost'] ) ) {
         continue;
       }
@@ -43,14 +43,6 @@ final class RateCalculator {
       ];
     }
     return $rates;
-  }
-
-  public static function fallback_rate( array $config ): array {
-    return [
-      'id'    => 'webbership_smartship:fallback',
-      'label' => (string) ( $config['fallback_title'] ?? 'Shipping' ),
-      'cost'  => max( 0.0, (float) ( $config['fallback_amount'] ?? 0 ) ),
-    ];
   }
 
   public static function apply_markup( float $cost, array $config ): float {

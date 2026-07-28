@@ -21,7 +21,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
     $this->id                 = 'webbership_smartship';
     $this->instance_id        = absint( $instance_id );
     $this->method_title       = __( 'SmartShip Live Rates', 'webbership-smartship' );
-    $this->method_description = __( 'Live courier rates from SmartShip, with a fallback flat rate.', 'webbership-smartship' );
+    $this->method_description = __( 'Live courier rates from SmartShip. No rate is offered when a live quote cannot be fetched.', 'webbership-smartship' );
     $this->supports           = [ 'shipping-zones', 'instance-settings', 'instance-settings-modal' ];
     $this->init();
   }
@@ -72,20 +72,6 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'description' => __( 'With "Flat amount", the fee added in your store currency. With "Percent", the percentage added to each rate.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
-      'fallback_amount' => [
-        'title'       => __( 'Fallback flat rate', 'webbership-smartship' ),
-        'type'        => 'text',
-        'default'     => '0',
-        'description' => __( 'Flat price charged when live rates cannot be fetched (SmartShip slow, down, or unable to quote the destination).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
-        'desc_tip'    => true,
-      ],
-      'fallback_title' => [
-        'title'   => __( 'Fallback label', 'webbership-smartship' ),
-        'type'    => 'text',
-        'default' => __( 'Shipping', 'webbership-smartship' ),
-        'description' => __( 'Label shown to the customer for the fallback flat rate.', 'webbership-smartship' ),
-        'desc_tip'    => true,
-      ],
     ];
   }
 
@@ -104,35 +90,31 @@ final class ShippingMethod extends \WC_Shipping_Method {
       'labels'            => $labels,
       'markup_type'       => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
       'markup_amount'     => max( 0.0, (float) $this->get_option( 'markup_amount', 0 ) ),
-      'fallback_amount'   => max( 0.0, (float) $this->get_option( 'fallback_amount', 0 ) ),
-      'fallback_title'    => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Shipping', 'webbership-smartship' ) ) ),
     ];
   }
 
   public function calculate_shipping( $package = [] ): void {
     $config = $this->config();
 
-    // Headless/cron (e.g. a subscription renewal) -> fallback, never call the API.
+    // Headless/cron (e.g. a subscription renewal) -> no live quote is possible, no rate.
     if ( wp_doing_cron() || ! function_exists( 'WC' ) || null === WC()->session ) {
-      $this->add_fallback( $config );
       return;
     }
 
     $api_key = Settings::api_key();
     if ( '' === $api_key ) {
-      $this->add_fallback( $config );
       return;
     }
     $client = new SmartShipClient( $api_key );
     $costs  = CostService::costs_for( $package, $client );
     if ( null === $costs ) {
-      $this->add_fallback( $config );
+      // No quote, no fallback: better to block checkout for this address than to
+      // undercharge a heavy order on a flat rate the store would eat the loss on.
       return;
     }
 
     $rates = RateCalculator::build_rates( $costs, $config );
     if ( empty( $rates ) ) {
-      $this->add_fallback( $config );
       return;
     }
     $divisor = Tax::shipping_vat_divisor(); // API returns cu TVA; WC expects ex-VAT.
@@ -144,10 +126,5 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'meta_data' => [ 'courier_id' => $r['courier_id'] ],
       ] );
     }
-  }
-
-  private function add_fallback( array $config ): void {
-    $f = RateCalculator::fallback_rate( $config );
-    $this->add_rate( [ 'id' => $f['id'], 'label' => $f['label'], 'cost' => $f['cost'] ] );
   }
 }

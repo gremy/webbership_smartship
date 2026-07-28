@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-28T18:31:19+00:00\n"
+"POT-Creation-Date: 2026-07-28T19:21:36+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -141,17 +141,17 @@ msgstr ""
 msgid "Test connection"
 msgstr ""
 
-#: includes/Support/class-tax.php:44
+#: includes/Support/class-tax.php:61
 msgid "Taxes are off in WooCommerce, so this is the final price the customer pays."
 msgstr ""
 
 #. translators: %s: the store's shipping tax rate, e.g. "21%".
-#: includes/Support/class-tax.php:62
+#: includes/Support/class-tax.php:79
 #, php-format
 msgid "Enter the amount WITHOUT VAT — WooCommerce adds %s shipping tax on top at checkout."
 msgstr ""
 
-#: includes/Support/class-tax.php:64
+#: includes/Support/class-tax.php:81
 msgid "Enter the amount WITHOUT VAT — WooCommerce adds shipping tax on top at checkout, per your tax settings."
 msgstr ""
 
@@ -164,7 +164,7 @@ msgid "Copied!"
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:53
-#: modules/awb/admin/class-awb-metabox.php:213
+#: modules/awb/admin/class-awb-metabox.php:235
 msgid "Enter the AWB number."
 msgstr ""
 
@@ -245,7 +245,7 @@ msgid "Select the Bucharest sector first."
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:73
-msgid "SmartShip ships within Romania only, and the order county was not recognized."
+msgid "Couldn't determine the destination county for this order."
 msgstr ""
 
 #: modules/awb/admin/class-awb-metabox.php:74
@@ -256,178 +256,193 @@ msgstr ""
 msgid "Package changed — click Estimate again."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:87
-#: modules/awb/admin/class-awb-metabox.php:119
-#: modules/awb/admin/class-awb-metabox.php:160
-#: modules/awb/admin/class-awb-metabox.php:172
-#: modules/awb/admin/class-awb-metabox.php:184
-#: modules/awb/admin/class-awb-metabox.php:209
+#: modules/awb/admin/class-awb-metabox.php:76
+#: modules/awb/admin/class-awb-metabox.php:101
+#: modules/awb/admin/class-awb-metabox.php:159
+msgid "Enter the destination city and postal code first."
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:88
+#: modules/awb/admin/class-awb-metabox.php:137
+#: modules/awb/admin/class-awb-metabox.php:182
+#: modules/awb/admin/class-awb-metabox.php:194
+#: modules/awb/admin/class-awb-metabox.php:206
+#: modules/awb/admin/class-awb-metabox.php:231
 #: modules/awb/admin/class-awb-print.php:30
 msgid "Forbidden."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:89
-#: modules/awb/admin/class-awb-metabox.php:121
-#: modules/awb/admin/class-awb-metabox.php:174
-#: modules/awb/admin/class-awb-metabox.php:186
-#: modules/awb/admin/class-awb-metabox.php:211
+#: modules/awb/admin/class-awb-metabox.php:90
+#: modules/awb/admin/class-awb-metabox.php:139
+#: modules/awb/admin/class-awb-metabox.php:196
+#: modules/awb/admin/class-awb-metabox.php:208
+#: modules/awb/admin/class-awb-metabox.php:233
 #: modules/awb/admin/class-awb-print.php:35
 msgid "Order not found."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:113
+#: modules/awb/admin/class-awb-metabox.php:109
+#: modules/awb/admin/class-awb-metabox.php:131
 msgid "Estimate failed."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:125
+#: modules/awb/admin/class-awb-metabox.php:143
 msgid "This order already has an AWB. Cancel it first to issue a new one."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:130
+#: modules/awb/admin/class-awb-metabox.php:148
 msgid "This is an EasyBox order — create the locker AWB in SmartShip and paste the number back here."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:133
+#: modules/awb/admin/class-awb-metabox.php:151
 msgid "Choose a courier."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:138
+#: modules/awb/admin/class-awb-metabox.php:157
 msgid "Resolve the destination city first."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:145
+#: modules/awb/admin/class-awb-metabox.php:167
 msgid "AWB issue failed."
 msgstr ""
 
 #. translators: 1: AWB number, 2: courier
-#: modules/awb/admin/class-awb-metabox.php:152
+#: modules/awb/admin/class-awb-metabox.php:174
 #, php-format
 msgid "SmartShip AWB %1$s issued (%2$s)."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:163
+#: modules/awb/admin/class-awb-metabox.php:185
 msgid "Could not load cities."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:176
-#: modules/awb/admin/class-awb-metabox.php:188
+#: modules/awb/admin/class-awb-metabox.php:198
+#: modules/awb/admin/class-awb-metabox.php:210
 #: modules/awb/admin/class-awb-print.php:37
 msgid "No AWB on this order."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:178
+#: modules/awb/admin/class-awb-metabox.php:200
 msgid "Status unavailable."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:195
+#: modules/awb/admin/class-awb-metabox.php:217
 #, php-format
 msgid "SmartShip AWB %s removed from this order. If it was already sent to the courier, cancel it in the SmartShip dashboard too."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:197
+#: modules/awb/admin/class-awb-metabox.php:219
 msgid "AWB removed. Cancel it in the SmartShip dashboard if it was already submitted."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:219
+#: modules/awb/admin/class-awb-metabox.php:241
 #, php-format
 msgid "SmartShip EasyBox AWB %s added manually."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:225
+#: modules/awb/admin/class-awb-metabox.php:247
 msgid "SmartShip doesn't recognize this AWB number."
 msgstr ""
 
 #. translators: %s: AWB number
-#: modules/awb/admin/class-awb-metabox.php:228
+#: modules/awb/admin/class-awb-metabox.php:250
 #, php-format
 msgid "SmartShip AWB %s added manually."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:338
+#: modules/awb/admin/class-awb-metabox.php:371
 msgid "AWB:"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:341
+#: modules/awb/admin/class-awb-metabox.php:374
 msgid "Print A4"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:342
+#: modules/awb/admin/class-awb-metabox.php:375
 msgid "Print A6"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:343
+#: modules/awb/admin/class-awb-metabox.php:376
 msgid "Refresh tracking"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:344
+#: modules/awb/admin/class-awb-metabox.php:377
 msgid "Cancel AWB"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:345
+#: modules/awb/admin/class-awb-metabox.php:378
 msgid "Cancel removes the AWB from this order. If it was already handed to the courier, cancel it in the SmartShip dashboard too."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:350
+#: modules/awb/admin/class-awb-metabox.php:383
 msgid "Estimate quotes couriers for the delivery address on this order (no charge). Pick one, then Issue AWB to create the shipment with SmartShip."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:352
+#: modules/awb/admin/class-awb-metabox.php:388
 msgid "Estimate"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:369
+#: modules/awb/admin/class-awb-metabox.php:406
+msgid "City"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:408
+msgid "Postal code"
+msgstr ""
+
+#: modules/awb/admin/class-awb-metabox.php:421
 msgid "Created the AWB in SmartShip directly? Paste it here to enable printing and tracking."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:370
-#: modules/awb/admin/class-awb-metabox.php:438
+#: modules/awb/admin/class-awb-metabox.php:422
+#: modules/awb/admin/class-awb-metabox.php:490
 msgid "Paste AWB number"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:371
-#: modules/awb/admin/class-awb-metabox.php:439
+#: modules/awb/admin/class-awb-metabox.php:423
+#: modules/awb/admin/class-awb-metabox.php:491
 msgid "Save AWB"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:383
+#: modules/awb/admin/class-awb-metabox.php:435
 msgid "Package"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:385
+#: modules/awb/admin/class-awb-metabox.php:437
 msgid "Box"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:387
+#: modules/awb/admin/class-awb-metabox.php:439
 msgid "— Box —"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:399
+#: modules/awb/admin/class-awb-metabox.php:451
 msgid "Weight (kg)"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:401
+#: modules/awb/admin/class-awb-metabox.php:453
 msgid "Dimensions (cm, L×W×H)"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:426
+#: modules/awb/admin/class-awb-metabox.php:478
 msgid "EasyBox locker"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:431
+#: modules/awb/admin/class-awb-metabox.php:483
 msgid "Recipient"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:433
+#: modules/awb/admin/class-awb-metabox.php:485
 msgid "Copy recipient"
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:435
+#: modules/awb/admin/class-awb-metabox.php:487
 msgid "Create the locker AWB in SmartShip, then paste the number back here to enable printing and tracking."
 msgstr ""
 
-#: modules/awb/admin/class-awb-metabox.php:436
+#: modules/awb/admin/class-awb-metabox.php:488
 msgid "Create EasyBox AWB in SmartShip ↗"
 msgstr ""
 
@@ -444,7 +459,7 @@ msgid "SmartShip Live Rates"
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:24
-msgid "Live courier rates from SmartShip, with a fallback flat rate."
+msgid "Live courier rates from SmartShip. No rate is offered when a live quote cannot be fetched."
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:40
@@ -500,30 +515,6 @@ msgstr ""
 msgid "With \"Flat amount\", the fee added in your store currency. With \"Percent\", the percentage added to each rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:76
-#: modules/easybox/class-easybox-method.php:56
-msgid "Fallback flat rate"
-msgstr ""
-
-#: modules/checkout-rates/class-shipping-method.php:79
-msgid "Flat price charged when live rates cannot be fetched (SmartShip slow, down, or unable to quote the destination)."
-msgstr ""
-
-#: modules/checkout-rates/class-shipping-method.php:83
-#: modules/easybox/class-easybox-method.php:63
-msgid "Fallback label"
-msgstr ""
-
-#: modules/checkout-rates/class-shipping-method.php:85
-#: modules/checkout-rates/class-shipping-method.php:108
-msgid "Shipping"
-msgstr ""
-
-#: modules/checkout-rates/class-shipping-method.php:86
-#: modules/easybox/class-easybox-method.php:66
-msgid "Label shown to the customer for the fallback flat rate."
-msgstr ""
-
 #: modules/easybox/class-easybox-method.php:25
 msgid "Ridicare Sameday Point / EasyBox (SameDay)"
 msgstr ""
@@ -552,8 +543,20 @@ msgstr ""
 msgid "Percent of the live SameDay home rate. 80 means 20% off — the measured EasyBox discount."
 msgstr ""
 
+#: modules/easybox/class-easybox-method.php:56
+msgid "Fallback flat rate"
+msgstr ""
+
 #: modules/easybox/class-easybox-method.php:59
 msgid "Flat price charged when no live SameDay rate is available (SmartShip slow or down, or the address is outside Romania)."
+msgstr ""
+
+#: modules/easybox/class-easybox-method.php:63
+msgid "Fallback label"
+msgstr ""
+
+#: modules/easybox/class-easybox-method.php:66
+msgid "Label shown to the customer for the fallback flat rate."
 msgstr ""
 
 #: modules/easybox/class-easybox-module.php:69
