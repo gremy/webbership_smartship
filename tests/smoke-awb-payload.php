@@ -46,6 +46,8 @@ namespace {
     public function get_billing_email() { return $this->d['email'] ?? ''; }
     public function get_shipping_phone() { return $this->d['s_phone'] ?? ''; }
     public function get_billing_phone() { return $this->d['b_phone'] ?? ''; }
+    public function get_shipping_country() { return $this->d['s_country'] ?? ''; }
+    public function get_billing_country() { return $this->d['b_country'] ?? ''; }
     public function get_total() { return $this->d['total'] ?? '0'; }
     public function get_payment_method() { return $this->d['pay'] ?? ''; }
     public function is_paid() { return $this->d['paid'] ?? false; }
@@ -72,6 +74,16 @@ namespace {
   assert_same( '0720000000', $rec['phone'], 'phone fallback to billing' );
   assert_same( 263852, $rec['city'], 'recipient city id' );
   assert_same( 'RO', $rec['country'], 'recipient country' );
+
+  // recipient: country comes from the order (shipping first, billing fallback), not
+  // hardcoded RO — international destinations must be able to build an AWB payload.
+  $ode = new FakeOrder( [ 's_first' => 'Max', 's_last' => 'Mustermann', 's_addr' => 'Str. B 2', 's_country' => 'DE' ] );
+  $recde = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $ode, [ 'city_id' => 1 ] );
+  assert_same( 'DE', $recde['country'], 'recipient country: taken from shipping country' );
+
+  $obill = new FakeOrder( [ 'b_first' => 'Jane', 'b_last' => 'Doe', 'b_addr' => 'Str. C 3', 'b_country' => 'FR' ] );
+  $recbill = Webbership\Smartship\Modules\Awb\Data\AwbPayload::recipient_from_order( $obill, [ 'city_id' => 1 ] );
+  assert_same( 'FR', $recbill['country'], 'recipient country: falls back to billing country' );
 
   // recipient: address_2 joined to address_1 from the same (shipping) source.
   $oa = new FakeOrder( [ 's_addr' => 'Str. A 1', 's_addr2' => 'Bl. 2 Ap. 3' ] );

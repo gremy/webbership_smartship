@@ -6,6 +6,14 @@ define( 'ABSPATH', __DIR__ );
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': ' . var_export( $a, true ) ); } }
 
+// Minimal stand-in for WP core's sanitize_text_field(): strips tags, collapses whitespace.
+function sanitize_text_field( string $s ): string {
+  return trim( preg_replace( '/[\s]+/', ' ', wp_strip_all_tags( $s ) ) );
+}
+function wp_strip_all_tags( string $s ): string {
+  return strip_tags( $s );
+}
+
 class WC_Tax {
   public static array $rates = [];
 
@@ -41,17 +49,26 @@ $costs = [
   [ 'courier_id' => 5,  'courier_name' => 'DragonStar',        'cost' => 21.40 ],
 ];
 
-// no allowlist, no markup -> all rates, raw cost, id + courier_id set.
-$r = RateCalculator::build_rates( $costs, [] );
-assert_same( 3, count( $r ), 'all couriers' );
+// no exclude list, no markup -> all rates, raw cost, id + courier_id set. No hardcoded
+// courier whitelist: an id SmartShip returns that the plugin has never heard of
+// (e.g. FedEx) must still produce a rate.
+$costs_with_fedex = array_merge( $costs, [ [ 'courier_id' => 42, 'courier_name' => 'FedEx', 'cost' => 55.0 ] ] );
+$r = RateCalculator::build_rates( $costs_with_fedex, [] );
+assert_same( 4, count( $r ), 'all couriers, including an unrecognized id' );
 assert_same( 'webbership_smartship:16', $r[0]['id'], 'rate id format' );
 assert_same( 16, $r[0]['courier_id'], 'courier_id carried' );
 assert_true( abs( $r[0]['cost'] - 17.97 ) < 0.001, 'raw cost' );
 assert_same( 'SmartShip Delivery', $r[0]['label'], 'default label = courier_name' );
+assert_same( 'FedEx', $r[3]['label'], 'unrecognized courier_id still gets a rate, labeled from courier_name' );
 
-// allowlist filters; label override; flat markup +5.
-$r = RateCalculator::build_rates( $costs, [ 'couriers' => [ 16, 1 ], 'labels' => [ 16 => 'Curier rapid' ], 'markup_type' => 'flat', 'markup_amount' => 5.0 ] );
-assert_same( 2, count( $r ), 'allowlist keeps 2' );
+// a courier_name containing markup must come out sanitized (no angle brackets) since
+// WooCommerce echoes the shipping label unescaped.
+$r = RateCalculator::build_rates( [ [ 'courier_id' => 7, 'courier_name' => '<script>alert(1)</script>Cargus', 'cost' => 10.0 ] ], [] );
+assert_true( ! str_contains( $r[0]['label'], '<' ) && ! str_contains( $r[0]['label'], '>' ), 'courier_name sanitized, no angle brackets' );
+
+// exclude list filters those ids out; label override; flat markup +5.
+$r = RateCalculator::build_rates( $costs, [ 'excluded_couriers' => [ 5 ], 'labels' => [ 16 => 'Curier rapid' ], 'markup_type' => 'flat', 'markup_amount' => 5.0 ] );
+assert_same( 2, count( $r ), 'exclude list drops 1, keeps 2' );
 assert_same( 'Curier rapid', $r[0]['label'], 'label override' );
 assert_true( abs( $r[0]['cost'] - 22.97 ) < 0.001, 'flat markup +5' );
 

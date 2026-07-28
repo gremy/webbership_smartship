@@ -8,10 +8,13 @@ through the official SmartShip partner API.
 
 ## Features
 
-- **Live checkout rates** — real per-courier prices from SmartShip `/cost`, shown at
-  checkout. Configurable courier allow-list, per-courier markup and labels, and a
-  fallback flat rate. Hard 3-second latency budget with response + failure caching, so a
-  slow or down API never hangs checkout (and never blocks a Subscriptions renewal).
+- **Live checkout rates** — real per-courier prices from SmartShip `/cost`, for any
+  destination country, shown at checkout. Every courier your SmartShip account returns
+  for the route is offered by default; optionally exclude specific couriers, and
+  configure per-courier markup and label overrides. Fallback flat rate with a hard
+  3-second latency budget and response + failure caching, so a slow or down API (or a
+  destination SmartShip can't quote) never hangs checkout (and never blocks a
+  Subscriptions renewal).
 - **AWB back-office** — from the order screen: estimate → issue → track → print the PDF
   label → cancel. Destination city is auto-resolved from the order, with a manual override
   when the match isn't confident. Live sender picker; IBAN handling for cash-on-delivery.
@@ -28,8 +31,9 @@ through the official SmartShip partner API.
   email). An AWB pasted into the fulfillment drawer, or into the order's SmartShip metabox
   (available for every order, not just EasyBox hand-offs), is auto-detected and verified
   against the SmartShip API rather than guessed from its format.
-- **Couriers**: Cargus, SameDay, FanCourier, DragonStar, DPD, PTT Express, SmartShip
-  Delivery (whatever your SmartShip account offers for the route).
+- **Couriers**: no fixed list — every courier SmartShip returns for the route is
+  offered (whatever your SmartShip account has enabled: Cargus, SameDay, FanCourier,
+  DPD, FedEx, etc.).
 - Translation-ready (`webbership-smartship` text domain, `.pot` included), HPOS-compatible,
   no Composer/npm runtime dependencies.
 

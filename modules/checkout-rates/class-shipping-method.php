@@ -17,12 +17,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ShippingMethod extends \WC_Shipping_Method {
 
-  /** Known SmartShip courier ids -> default names (see docs/reference/smartship-api.md). */
-  private const COURIERS = [
-    1 => 'Cargus', 2 => 'SameDay', 3 => 'FanCourier', 5 => 'DragonStar',
-    6 => 'DPD', 14 => 'PTT Express', 16 => 'SmartShip Delivery',
-  ];
-
   public function __construct( $instance_id = 0 ) {
     $this->id                 = 'webbership_smartship';
     $this->instance_id        = absint( $instance_id );
@@ -41,10 +35,6 @@ final class ShippingMethod extends \WC_Shipping_Method {
   }
 
   public function init_form_fields(): void {
-    $courier_options = [];
-    foreach ( self::COURIERS as $cid => $name ) {
-      $courier_options[ $cid ] = $name . ' (' . $cid . ')';
-    }
     $this->instance_form_fields = [
       'title' => [
         'title'       => __( 'Method title', 'webbership-smartship' ),
@@ -53,20 +43,18 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'description' => __( 'Heading shown above the courier choices at checkout.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
-      'couriers' => [
-        'title'       => __( 'Couriers to offer', 'webbership-smartship' ),
-        'type'        => 'multiselect',
-        'class'       => 'wc-enhanced-select',
-        'options'     => $courier_options,
-        'default'     => [],
-        'description' => __( 'Pick which couriers customers may choose. Leave empty to offer every courier SmartShip returns for the destination.', 'webbership-smartship' ),
+      'excluded_couriers' => [
+        'title'       => __( 'Couriers to exclude', 'webbership-smartship' ),
+        'type'        => 'text',
+        'default'     => '',
+        'description' => __( 'By default every courier SmartShip returns for the destination is offered. To hide specific couriers, list their ids here, comma-separated (e.g. 3, 14). Find a courier\'s id in the order-screen Estimate results.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'labels' => [
         'title'       => __( 'Courier label overrides', 'webbership-smartship' ),
         'type'        => 'textarea',
         'default'     => '',
-        'description' => __( 'Rename couriers at checkout. One per line as courier_id|Custom label (e.g. 16|Curier rapid). The IDs are shown in brackets in the "Couriers to offer" list above.', 'webbership-smartship' ),
+        'description' => __( 'Rename couriers at checkout. One per line as courier_id|Custom label (e.g. 16|Curier rapid). Find a courier\'s id in the order-screen Estimate results.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'markup_type' => [
@@ -88,7 +76,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'title'       => __( 'Fallback flat rate', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => '0',
-        'description' => __( 'Flat price charged when live rates cannot be fetched (SmartShip slow or down, or the address is outside Romania).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
+        'description' => __( 'Flat price charged when live rates cannot be fetched (SmartShip slow, down, or unable to quote the destination).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
         'desc_tip'    => true,
       ],
       'fallback_title' => [
@@ -110,14 +98,14 @@ final class ShippingMethod extends \WC_Shipping_Method {
         $labels[ absint( $parts[0] ) ] = sanitize_text_field( trim( $parts[1] ) );
       }
     }
-    $known = array_keys( self::COURIERS );
+    $excluded = array_filter( array_map( 'absint', explode( ',', (string) $this->get_option( 'excluded_couriers', '' ) ) ) );
     return [
-      'couriers'        => array_values( array_intersect( array_map( 'absint', (array) $this->get_option( 'couriers', [] ) ), $known ) ),
-      'labels'          => $labels,
-      'markup_type'     => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
-      'markup_amount'   => max( 0.0, (float) $this->get_option( 'markup_amount', 0 ) ),
-      'fallback_amount' => max( 0.0, (float) $this->get_option( 'fallback_amount', 0 ) ),
-      'fallback_title'  => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Shipping', 'webbership-smartship' ) ) ),
+      'excluded_couriers' => array_values( $excluded ),
+      'labels'            => $labels,
+      'markup_type'       => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
+      'markup_amount'     => max( 0.0, (float) $this->get_option( 'markup_amount', 0 ) ),
+      'fallback_amount'   => max( 0.0, (float) $this->get_option( 'fallback_amount', 0 ) ),
+      'fallback_title'    => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Shipping', 'webbership-smartship' ) ) ),
     ];
   }
 
@@ -126,12 +114,6 @@ final class ShippingMethod extends \WC_Shipping_Method {
 
     // Headless/cron (e.g. a subscription renewal) -> fallback, never call the API.
     if ( wp_doing_cron() || ! function_exists( 'WC' ) || null === WC()->session ) {
-      $this->add_fallback( $config );
-      return;
-    }
-
-    $dest = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
-    if ( 'RO' !== ( $dest['country'] ?? '' ) ) {
       $this->add_fallback( $config );
       return;
     }

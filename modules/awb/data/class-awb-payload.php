@@ -30,13 +30,14 @@ final class AwbPayload {
     $addr2   = $use_shipping ? $order->get_shipping_address_2() : $order->get_billing_address_2();
     $address = trim( $addr1 . ( $addr2 !== '' ? ' ' . $addr2 : '' ) );
     $phone   = $order->get_shipping_phone() ?: $order->get_billing_phone();
+    $country = (string) ( $order->get_shipping_country() ?: $order->get_billing_country() );
     return [
       'name'    => $name,
       'address' => (string) $address,
       'email'   => (string) $order->get_billing_email(),
       'city'    => isset( $resolved['city_id'] ) ? (int) $resolved['city_id'] : 0,
       'phone'   => (string) $phone,
-      'country' => 'RO',
+      'country' => '' !== $country ? $country : 'RO',
       'sector'  => self::canonical_sector( $resolved['sector'] ?? '0' ),
     ];
   }

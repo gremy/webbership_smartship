@@ -13,9 +13,9 @@ defined( 'ABSPATH' ) || exit;
 final class RateCalculator {
 
   public static function build_rates( array $costs, array $config ): array {
-    $allow  = array_map( 'intval', (array) ( $config['couriers'] ?? [] ) );
-    $labels = (array) ( $config['labels'] ?? [] );
-    $rates  = [];
+    $excluded = array_map( 'intval', (array) ( $config['excluded_couriers'] ?? [] ) );
+    $labels   = (array) ( $config['labels'] ?? [] );
+    $rates    = [];
     foreach ( $costs as $c ) {
       if ( ! is_array( $c ) ) {
         continue;
@@ -29,12 +29,12 @@ final class RateCalculator {
       if ( ! isset( $c['cost'] ) || ! is_numeric( $c['cost'] ) ) {
         continue;
       }
-      if ( ! empty( $allow ) && ! in_array( $cid, $allow, true ) ) {
+      if ( in_array( $cid, $excluded, true ) ) {
         continue;
       }
       $label = ( isset( $labels[ $cid ] ) && '' !== (string) $labels[ $cid ] )
         ? (string) $labels[ $cid ]
-        : (string) ( $c['courier_name'] ?? ( 'Courier ' . $cid ) );
+        : sanitize_text_field( (string) ( $c['courier_name'] ?? ( 'Courier ' . $cid ) ) );
       $rates[] = [
         'id'         => 'webbership_smartship:' . $cid,
         'label'      => $label,

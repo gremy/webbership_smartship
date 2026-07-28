@@ -43,6 +43,7 @@ if ( ! class_exists( '\\Webbership\\Smartship\\Settings\\Settings' ) ) {
 class FakeCostClient {
   public int $cost_calls = 0;
   public int $last_cost_timeout = 0;
+  public array $last_cost_body = [];
   public $cost_result;
   public function get_counties( int $t = 0 ): array {
     return [ 'ok' => true, 'status' => 200, 'counties' => [ [ 'id' => 38, 'county' => 'Timis' ] ] ];
@@ -58,6 +59,7 @@ class FakeCostClient {
   public function cost( array $body, int $t = 0 ): array {
     $this->cost_calls++;
     $this->last_cost_timeout = $t;
+    $this->last_cost_body    = $body;
     return $this->cost_result;
   }
 }
@@ -144,5 +146,45 @@ $client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payloa
 set_transient( 'webbership_ss_rate_' . md5( '263804' . '|' . '1' . '|' . '7' . '|' . 'TESTKEY' ), $costs_payload, 600 );
 assert_true( null === CostService::costs_for( $ro_pkg, $client ), 'invalid sender: null despite hot rate cache' );
 assert_same( 0, $client->cost_calls, 'invalid sender: no /cost call' );
+
+// 8) International destination: no RO-only gate — a DE package reaches /cost with
+// the real country (not hardcoded 'RO') and the real city name passed through.
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+$de_pkg = [ 'destination' => [ 'country' => 'DE', 'state' => 'BE', 'city' => 'Berlin', 'postcode' => '10115', 'address' => 'Musterstr. 1' ], 'contents' => [] ];
+$out_de = CostService::costs_for( $de_pkg, $client );
+assert_true( is_array( $out_de ), 'international: returns array for a DE destination' );
+assert_same( 1, $client->cost_calls, 'international: /cost was called (no RO-only short-circuit)' );
+assert_same( 'DE', $client->last_cost_body['recipient']['country'], 'international: recipient country is the real destination, not RO' );
+assert_same( 'Berlin', $client->last_cost_body['recipient']['city'], 'international: recipient city passed through as the WC city name' );
+
+// 9) International destination with no city -> null, no /cost call (can't quote it).
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+$no_city_pkg = [ 'destination' => [ 'country' => 'DE', 'city' => '' ], 'contents' => [] ];
+assert_true( null === CostService::costs_for( $no_city_pkg, $client ), 'international: no city -> null' );
+assert_same( 0, $client->cost_calls, 'international: no city -> no /cost call' );
+
+// 10) No destination country at all -> null, no /cost call.
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+assert_true( null === CostService::costs_for( [ 'destination' => [], 'contents' => [] ], $client ), 'no country -> null' );
+assert_same( 0, $client->cost_calls, 'no country -> no /cost call' );
+
+// 11) Cache key is scoped by country: an RO package and a DE package that happen to
+// share the same city TEXT and weight must NOT share a cached rate (RO resolves to
+// a numeric city id anyway, but this proves the country is in the hash, not just
+// something that happens to differ because of that).
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+CostService::costs_for( $ro_pkg, $client ); // caches under the RO hash
+$before = $client->cost_calls;
+$de_same_city_pkg = [ 'destination' => [ 'country' => 'DE', 'city' => 'Sacalaz' ], 'contents' => [] ];
+assert_true( is_array( CostService::costs_for( $de_same_city_pkg, $client ) ), 'country-scoped cache: DE quote still fetched' );
+assert_true( $client->cost_calls > $before, 'country-scoped cache: RO cache entry did not satisfy the DE request' );
 
 echo "smoke-cost-service: all assertions passed\n";

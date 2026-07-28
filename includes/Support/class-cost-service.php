@@ -10,7 +10,8 @@ use Webbership\Smartship\Modules\Awb\Data\AwbPayload;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shared, cached SameDay-style /cost fetch for a checkout package's RO destination.
+ * Shared, cached SameDay-style /cost fetch for a checkout package's destination
+ * (Romania or international).
  *
  * Extracted from the live-rates ShippingMethod so the EasyBox method reuses the SAME
  * cached transient (rate cache + failure-cache) — one /cost round-trip, not two.
@@ -20,23 +21,46 @@ defined( 'ABSPATH' ) || exit;
 final class CostService {
 
   /**
-   * Cached /cost costs[] for the package's RO destination, or null on any short-circuit
+   * Cached /cost costs[] for the package's destination, or null on any short-circuit
    * (non-resolvable city, failure-cache hot, no sender, /cost fail, non-array costs).
+   *
+   * RO destinations are resolved to SmartShip's numeric city id via CityResolver
+   * (SmartShip's geolocation lookup only covers Romania). Non-RO destinations pass
+   * the WooCommerce address fields straight through — SmartShip's exact contract
+   * for non-RO recipients isn't documented, so this is a best-effort shape; a
+   * rejection from the API is just a failed /cost call, which already falls back.
    *
    * @param array          $package WooCommerce shipping package (destination + contents).
    * @param SmartShipClient $client  SmartShip client (duck-typed in tests).
    * @return array|null The normalized costs[] (each row {courier_id,courier_name,cost,...}) or null.
    */
   public static function costs_for( array $package, $client ): ?array {
-    $dest = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
-
-    $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ), (string) ( $dest['address'] ?? '' ) );
-    if ( empty( $resolved['city_id'] ) ) {
+    $dest    = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
+    $country = strtoupper( (string) ( $dest['country'] ?? '' ) );
+    if ( '' === $country ) {
       return null;
     }
 
-    $city_id = (int) $resolved['city_id'];
-    $weight  = (int) ceil( max( 1.0, AwbPayload::to_kg( self::package_weight( $package ) ) ) );
+    if ( 'RO' === $country ) {
+      $resolved = ( new CityResolver( $client, SmartShipClient::RATE_TIMEOUT ) )->resolve( (string) ( $dest['state'] ?? '' ), (string) ( $dest['city'] ?? '' ), (string) ( $dest['address'] ?? '' ) );
+      if ( empty( $resolved['city_id'] ) ) {
+        return null;
+      }
+      $recipient_city = (int) $resolved['city_id'];
+      $sector         = AwbPayload::canonical_sector( $resolved['sector'] ?? '0' );
+      // Bucharest sector is intentionally omitted from the cache key: every sector
+      // shares the same city id and cost, so one cached quote covers all of them.
+      $cache_locality = (string) $recipient_city;
+    } else {
+      $recipient_city = (string) ( $dest['city'] ?? '' );
+      if ( '' === $recipient_city ) {
+        return null;
+      }
+      $sector         = '0';
+      $cache_locality = strtolower( trim( $recipient_city ) ) . '|' . strtolower( trim( (string) ( $dest['postcode'] ?? '' ) ) );
+    }
+
+    $weight = (int) ceil( max( 1.0, AwbPayload::to_kg( self::package_weight( $package ) ) ) );
 
     // Validate the sender BEFORE the caches (Phase 3 order): a missing/invalid
     // sender must yield fallback even when the rate cache for this city is hot.
@@ -45,9 +69,9 @@ final class CostService {
       return null;
     }
 
-    // Bucharest sector is intentionally omitted here: every sector shares the same
-    // city id and cost, so one cached quote covers all of them.
-    $hash   = md5( $city_id . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
+    // Country-scoped so RO and international quotes for the same city/weight
+    // combination never collide (they hit different SmartShip pricing anyway).
+    $hash   = md5( $country . '|' . $cache_locality . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
     $key    = 'webbership_ss_rate_' . $hash;
     // Scoped per destination (same hash as the rate-cache key) so one bad destination
     // doesn't suppress live rates for every other customer's checkout for 60s.
@@ -61,7 +85,7 @@ final class CostService {
     }
 
     $body = [
-      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $city_id, 'phone' => '0700000000', 'country' => 'RO', 'sector' => AwbPayload::canonical_sector( $resolved['sector'] ?? '0' ) ],
+      'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $recipient_city, 'phone' => '0700000000', 'country' => $country, 'sector' => $sector ],
       'sender'    => $sender,
       'content'   => [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ],
     ];
