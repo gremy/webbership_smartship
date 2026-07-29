@@ -25,6 +25,7 @@
   --wss-line: #dce2e0;            /* borders / dividers */
 
   margin: 0.75em 0;
+  max-width: 100%;
   font-size: 0.95em;
   /* Host themes often center the checkout review cell this renders inside; that
      inherited text-align staggers each row's lines into a ragged cascade. Anchor
@@ -32,8 +33,33 @@
   text-align: left;
 }
 
+/* Self-contained sizing: never trust a host theme's box model. box-sizing
+   here (not just on the search input) so borders/padding on any picker
+   element are absorbed into 100%, not added on top of it. */
+.webbership-ss-easybox,
+.webbership-ss-easybox *,
+.webbership-ss-easybox *::before,
+.webbership-ss-easybox *::after {
+  box-sizing: border-box;
+}
+
 .webbership-ss-easybox[hidden] {
   display: none;
+}
+
+/* The plugin owns this row/cell (rendered by EasyBoxModule::render_picker) and
+   must stay self-contained under a theme that converts .shop_table rows to
+   flex (e.g. `tr { display: flex }`) for its own layout purposes. Without this,
+   the td is a flex item with the browser default min-width: auto — its
+   automatic minimum floors at the picker's own content width (the same
+   min-width:auto trap already fixed on .webbership-ss-map/.webbership-ss-list,
+   one level up the ancestor chain) — so it refuses to shrink to the row's
+   actual width and drags the whole page wide. */
+.webbership-ss-easybox-row > td {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* States ------------------------------------------------------------------ */
@@ -96,7 +122,11 @@
   font-weight: 700;
 }
 
-.webbership-ss-confirm-text { line-height: 1.3; }
+.webbership-ss-confirm-text {
+  min-width: 0; /* let the locker name/address wrap instead of forcing the row wider */
+  overflow-wrap: anywhere; /* a long unbroken locker/address name must not set a floor either */
+  line-height: 1.3;
+}
 
 .webbership-ss-confirm-label {
   display: block;
@@ -169,6 +199,13 @@
 
 .webbership-ss-map {
   flex: 1 1 320px;
+  /* min-width: 0 overrides the flex-item default of `auto`, which otherwise
+     floors this item's shrink target at its own content size — refusing to
+     go narrower than 320px even in a host column tighter than map + list,
+     and pushing the whole row (and every block ancestor up to the theme's
+     order-review table) past the container's right edge. */
+  min-width: 0;
+  max-width: 100%;
   height: 320px;
   border: 1px solid var( --wss-line );
   border-radius: 6px;
@@ -178,6 +215,8 @@
 
 .webbership-ss-list {
   flex: 1 1 260px;
+  min-width: 0; /* see .webbership-ss-map comment above */
+  max-width: 100%;
   max-height: 320px;
   overflow-y: auto;
   margin: 0;
@@ -251,6 +290,7 @@
 .webbership-ss-row-text {
   display: flex;
   flex-direction: column;
+  min-width: 0; /* same shrink trap as confirm-text: let long addresses wrap */
   gap: 0.1em;
   line-height: 1.3;
 }
@@ -263,6 +303,7 @@
 .webbership-ss-row-addr {
   font-size: 0.88em;
   color: var( --wss-muted );
+  overflow-wrap: anywhere; /* a long unbroken street/locker name must not set a floor */
 }
 
 .webbership-ss-row-city {
