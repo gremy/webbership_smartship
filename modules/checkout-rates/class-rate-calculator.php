@@ -25,7 +25,7 @@ final class RateCalculator {
         continue;
       }
       // A row without a numeric cost must NOT become a free (0) rate — skip it.
-      // If every row is invalid, the caller sees an empty rates array and adds none.
+      // If every row is invalid, the empty result triggers the caller's fallback.
       if ( ! isset( $c['cost'] ) || ! is_numeric( $c['cost'] ) ) {
         continue;
       }
@@ -43,6 +43,21 @@ final class RateCalculator {
       ];
     }
     return $rates;
+  }
+
+  /**
+   * Weight-aware fallback rate for when SmartShip can't be quoted (down, no key,
+   * headless, or an unquotable destination). Priced base + per_kg * package weight
+   * so it never undercuts a heavy parcel the way the old flat fallback did.
+   */
+  public static function fallback_rate( array $config, float $weight_kg ): array {
+    $base   = max( 0.0, (float) ( $config['fallback_amount'] ?? 0 ) );
+    $per_kg = max( 0.0, (float) ( $config['fallback_per_kg_amount'] ?? 0 ) );
+    return [
+      'id'    => 'webbership_smartship:fallback',
+      'label' => '' !== (string) ( $config['fallback_title'] ?? '' ) ? (string) $config['fallback_title'] : __( 'Shipping', 'webbership-smartship' ),
+      'cost'  => round( $base + $per_kg * max( 0.0, $weight_kg ), 2 ),
+    ];
   }
 
   public static function apply_markup( float $cost, array $config ): float {

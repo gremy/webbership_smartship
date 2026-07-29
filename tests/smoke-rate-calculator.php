@@ -110,6 +110,29 @@ assert_same( 16, $r[0]['courier_id'], 'only the valid-cost row survives' );
 $r = RateCalculator::build_rates( [ 'garbage', [ 'courier_id' => 1, 'courier_name' => 'ok', 'cost' => 5 ] ], [] );
 assert_same( 1, count( $r ), 'skip non-array row' );
 
+// fallback_rate(): weight-aware fallback pricing (base + per_kg * weight).
+$fb_config = [ 'fallback_amount' => 50, 'fallback_per_kg_amount' => 15, 'fallback_title' => 'Standard shipping' ];
+$fb = RateCalculator::fallback_rate( $fb_config, 3.0 );
+assert_same( 'webbership_smartship:fallback', $fb['id'], 'fallback rate id' );
+assert_same( 'Standard shipping', $fb['label'], 'fallback label from config' );
+assert_true( abs( $fb['cost'] - 95.0 ) < 0.001, 'fallback cost = base 50 + per_kg 15 * 3kg = 95' );
+
+// zero/unknown weight -> base amount only.
+$fb = RateCalculator::fallback_rate( $fb_config, 0.0 );
+assert_true( abs( $fb['cost'] - 50.0 ) < 0.001, 'zero weight -> base amount only' );
+
+// missing config keys default to 0, and negative inputs are guarded to 0.
+$fb = RateCalculator::fallback_rate( [], 5.0 );
+assert_true( abs( $fb['cost'] - 0.0 ) < 0.001, 'missing fallback config -> 0 cost' );
+assert_same( 'Shipping', $fb['label'], 'missing fallback_title falls back to "Shipping"' );
+
+// empty string fallback_title must also fall back to default label.
+$fb = RateCalculator::fallback_rate( [ 'fallback_title' => '' ], 1.0 );
+assert_same( 'Shipping', $fb['label'], 'empty fallback_title falls back to default "Shipping"' );
+
+$fb = RateCalculator::fallback_rate( [ 'fallback_amount' => -10, 'fallback_per_kg_amount' => -5 ], 3.0 );
+assert_true( abs( $fb['cost'] - 0.0 ) < 0.001, 'negative base/per_kg guarded to 0' );
+
 // VAT-inclusive API costs are divided only when WooCommerce will add shipping tax.
 $GLOBALS['webbership_smoke_wc'] = (object) [ 'customer' => new SmokeCustomer( false ) ];
 \WC_Tax::$rates = [ [ 'rate' => 21 ] ];

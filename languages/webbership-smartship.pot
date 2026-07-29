@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-28T19:21:36+00:00\n"
+"POT-Creation-Date: 2026-07-29T04:29:04+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -454,12 +454,16 @@ msgstr ""
 msgid "SmartShip did not return a valid PDF."
 msgstr ""
 
+#: modules/checkout-rates/class-rate-calculator.php:58
+msgid "Shipping"
+msgstr ""
+
 #: modules/checkout-rates/class-shipping-method.php:23
 msgid "SmartShip Live Rates"
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:24
-msgid "Live courier rates from SmartShip. No rate is offered when a live quote cannot be fetched."
+msgid "Live courier rates from SmartShip, with a weight-based fallback."
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:40
@@ -515,6 +519,36 @@ msgstr ""
 msgid "With \"Flat amount\", the fee added in your store currency. With \"Percent\", the percentage added to each rate."
 msgstr ""
 
+#: modules/checkout-rates/class-shipping-method.php:76
+#: modules/easybox/class-easybox-method.php:63
+msgid "Fallback label"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:78
+#: modules/checkout-rates/class-shipping-method.php:116
+msgid "Standard shipping"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:79
+msgid "Label shown to the customer for the fallback rate."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:83
+msgid "Fallback base amount"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:86
+msgid "Base price charged when live rates cannot be fetched (SmartShip slow, down, no API key, or unable to quote the destination). Set this and the per-kg amount at or above your most expensive real courier route — the fallback exists to keep checkout open, not to be cheap."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:90
+msgid "Fallback per-kg amount"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:93
+msgid "Added to the fallback base amount for every kg of package weight, so the fallback never underprices a heavy parcel."
+msgstr ""
+
 #: modules/easybox/class-easybox-method.php:25
 msgid "Ridicare Sameday Point / EasyBox (SameDay)"
 msgstr ""
@@ -549,10 +583,6 @@ msgstr ""
 
 #: modules/easybox/class-easybox-method.php:59
 msgid "Flat price charged when no live SameDay rate is available (SmartShip slow or down, or the address is outside Romania)."
-msgstr ""
-
-#: modules/easybox/class-easybox-method.php:63
-msgid "Fallback label"
 msgstr ""
 
 #: modules/easybox/class-easybox-method.php:66

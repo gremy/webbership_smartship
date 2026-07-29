@@ -104,6 +104,11 @@ final class CostService {
     return $costs;
   }
 
+  /** Package weight in kg (unit-converted, unfloored — 0 when no item carries a weight). */
+  public static function package_weight_kg( array $package ): float {
+    return AwbPayload::to_kg( self::package_weight( $package ) );
+  }
+
   /** The matching courier's cost as a float, or null if that courier isn't in costs[]. */
   public static function courier_cost( array $costs, int $courier_id ): ?float {
     foreach ( $costs as $c ) {
