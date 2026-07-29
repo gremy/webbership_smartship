@@ -5,6 +5,7 @@ namespace Webbership\Smartship\Modules\CheckoutRates;
 
 use Webbership\Smartship\Api\SmartShipClient;
 use Webbership\Smartship\Support\CostService;
+use Webbership\Smartship\Support\CourierRegistry;
 use Webbership\Smartship\Support\Tax;
 use Webbership\Smartship\Settings\Settings;
 
@@ -45,9 +46,12 @@ final class ShippingMethod extends \WC_Shipping_Method {
       ],
       'excluded_couriers' => [
         'title'       => __( 'Couriers to exclude', 'webbership-smartship' ),
-        'type'        => 'text',
-        'default'     => '',
-        'description' => __( 'By default every courier SmartShip returns for the destination is offered. To hide specific couriers, list their ids here, comma-separated (e.g. 3, 14). Find a courier\'s id in the order-screen Estimate results.', 'webbership-smartship' ),
+        'type'        => 'multiselect',
+        'class'       => 'wc-enhanced-select',
+        'css'         => 'width: 400px;',
+        'default'     => [],
+        'options'     => CourierRegistry::known(),
+        'description' => __( 'By default every courier SmartShip returns for the destination is offered at checkout. Select couriers here to hide them. Couriers seen in live SmartShip quotes are added to this list automatically as they appear.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'labels' => [
@@ -105,9 +109,8 @@ final class ShippingMethod extends \WC_Shipping_Method {
         $labels[ absint( $parts[0] ) ] = sanitize_text_field( trim( $parts[1] ) );
       }
     }
-    $excluded = array_filter( array_map( 'absint', explode( ',', (string) $this->get_option( 'excluded_couriers', '' ) ) ) );
     return [
-      'excluded_couriers' => array_values( $excluded ),
+      'excluded_couriers' => $this->excluded_couriers(),
       'labels'            => $labels,
       'markup_type'       => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
       'markup_amount'     => max( 0.0, (float) $this->get_option( 'markup_amount', 0 ) ),
@@ -115,6 +118,19 @@ final class ShippingMethod extends \WC_Shipping_Method {
       'fallback_per_kg_amount' => max( 0.0, (float) $this->get_option( 'fallback_per_kg_amount', 0 ) ),
       'fallback_title'    => sanitize_text_field( (string) $this->get_option( 'fallback_title', __( 'Standard shipping', 'webbership-smartship' ) ) ),
     ];
+  }
+
+  /**
+   * Normalizes the saved 'excluded_couriers' setting into a clean int array.
+   * Back-compat: older saves are a comma-separated string (the old text field);
+   * current saves are an array of ids (the multiselect). Both are read.
+   */
+  private function excluded_couriers(): array {
+    $raw = $this->get_option( 'excluded_couriers', [] );
+    if ( ! is_array( $raw ) ) {
+      $raw = explode( ',', (string) $raw );
+    }
+    return array_values( array_filter( array_map( 'absint', $raw ) ) );
   }
 
   public function calculate_shipping( $package = [] ): void {

@@ -100,6 +100,7 @@ final class CostService {
       set_transient( $fail_key, 1, MINUTE_IN_SECONDS );
       return null;
     }
+    CourierRegistry::learn( $costs );
     set_transient( $key, $costs, 10 * MINUTE_IN_SECONDS );
     return $costs;
   }

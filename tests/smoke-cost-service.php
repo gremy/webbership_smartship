@@ -13,6 +13,13 @@ function get_transient( $k ) { return $GLOBALS['ss_store'][ $k ] ?? false; }
 function set_transient( $k, $v, $ttl = 0 ) { $GLOBALS['ss_store'][ $k ] = $v; return true; }
 function delete_transient( $k ) { unset( $GLOBALS['ss_store'][ $k ] ); return true; }
 
+// In-memory options store for CourierRegistry::learn(), which costs_for() now calls
+// on every live (non-cached) /cost parse.
+$GLOBALS['ss_options'] = [];
+function get_option( $k, $default = false ) { return $GLOBALS['ss_options'][ $k ] ?? $default; }
+function update_option( $k, $v, $autoload = true ) { $GLOBALS['ss_options'][ $k ] = $v; return true; }
+function sanitize_text_field( string $s ): string { return trim( preg_replace( '/[\s]+/', ' ', strip_tags( $s ) ) ); }
+
 function assert_true( bool $c, string $m ): void { if ( ! $c ) { throw new RuntimeException( $m ); } }
 function assert_same( $e, $a, string $m ): void { if ( $e !== $a ) { throw new RuntimeException( $m . ': expected ' . var_export( $e, true ) . ', got ' . var_export( $a, true ) ); } }
 
@@ -27,6 +34,7 @@ function any_fail_key_set(): bool {
 require_once __DIR__ . '/../includes/Api/class-smartship-client.php';
 require_once __DIR__ . '/../includes/Support/class-city-resolver.php';
 require_once __DIR__ . '/../modules/awb/data/class-awb-payload.php';
+require_once __DIR__ . '/../includes/Support/class-courier-registry.php';
 require_once __DIR__ . '/../includes/Support/class-cost-service.php';
 
 use Webbership\Smartship\Support\CostService;
@@ -87,6 +95,8 @@ assert_same( 2, count( $out ), 'happy: two rows' );
 assert_same( 2, (int) $out[0]['courier_id'], 'happy: first row SameDay' );
 assert_same( 1, $client->cost_calls, 'happy: one /cost call' );
 assert_same( \Webbership\Smartship\Api\SmartShipClient::RATE_TIMEOUT, $client->last_cost_timeout, 'happy: /cost uses RATE_TIMEOUT' );
+// A live /cost parse must teach CourierRegistry the courier names it just saw.
+assert_same( 'SameDay', \Webbership\Smartship\Support\CourierRegistry::known()[2] ?? null, 'happy: CourierRegistry learned courier 2 from the live response' );
 
 // 2) Second call hits the rate cache -> client->cost() NOT called again.
 $out2 = CostService::costs_for( $ro_pkg, $client );

@@ -19,6 +19,12 @@ function untrailingslashit( string $s ): string { return rtrim( $s, '/\\' ); }
 function wp_doing_cron() { return $GLOBALS['webbership_smoke_cron'] ?? false; }
 function WC() { return $GLOBALS['webbership_smoke_wc']; }
 
+// In-memory options store: CourierRegistry::known() (read by init_form_fields() on
+// every ShippingMethod construction) goes through get_option().
+$GLOBALS['webbership_smoke_options'] = [];
+function get_option( $k, $default = false ) { return $GLOBALS['webbership_smoke_options'][ $k ] ?? $default; }
+function update_option( $k, $v, $autoload = true ) { $GLOBALS['webbership_smoke_options'][ $k ] = $v; return true; }
+
 /** Minimal stand-in for WC_Shipping_Method: only what ShippingMethod actually calls. */
 class WC_Shipping_Method {
   public $id;
@@ -63,6 +69,7 @@ if ( ! class_exists( '\\Webbership\\Smartship\\Settings\\Settings' ) ) {
 require_once __DIR__ . '/../includes/Api/class-smartship-client.php';
 require_once __DIR__ . '/../includes/Support/class-city-resolver.php';
 require_once __DIR__ . '/../modules/awb/data/class-awb-payload.php';
+require_once __DIR__ . '/../includes/Support/class-courier-registry.php';
 require_once __DIR__ . '/../includes/Support/class-cost-service.php';
 require_once __DIR__ . '/../includes/Support/class-tax.php';
 require_once __DIR__ . '/../modules/checkout-rates/class-rate-calculator.php';
@@ -128,5 +135,25 @@ $config = $method->config();
 assert_true( abs( $config['fallback_amount'] - 50.0 ) < 0.001, 'fallback_amount in config()' );
 assert_true( abs( $config['fallback_per_kg_amount'] - 15.0 ) < 0.001, 'fallback_per_kg_amount in config()' );
 assert_same( 'Standard shipping', $config['fallback_title'], 'fallback_title in config()' );
+
+// 6) excluded_couriers normalization: config() must read both the legacy comma-separated
+//    string (old text field) and the new array (multiselect) into a clean int array.
+$method = new ShippingMethod();
+$method->settings = $fallback_settings + [ 'excluded_couriers' => '3, 14' ];
+assert_same( [ 3, 14 ], $method->config()['excluded_couriers'], 'legacy comma string normalized to int array' );
+
+$method = new ShippingMethod();
+$method->settings = $fallback_settings + [ 'excluded_couriers' => [ '3', 14, 0, '' ] ];
+assert_same( [ 3, 14 ], $method->config()['excluded_couriers'], 'multiselect array normalized, zero/blank dropped' );
+
+$method = new ShippingMethod();
+$method->settings = $fallback_settings; // no excluded_couriers saved at all
+assert_same( [], $method->config()['excluded_couriers'], 'unset excluded_couriers -> empty array (all couriers offered)' );
+
+// 7) excluded_couriers field is a multiselect sourced from CourierRegistry::known(),
+//    not a hardcoded list — the field's options must include a seeded courier.
+$field = $method->instance_form_fields['excluded_couriers'];
+assert_same( 'multiselect', $field['type'], 'excluded_couriers is a multiselect field' );
+assert_true( isset( $field['options'][2] ), 'excluded_couriers options include a known courier id' );
 
 echo "smoke-shipping-method: all assertions passed\n";
