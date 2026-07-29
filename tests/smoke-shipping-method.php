@@ -156,4 +156,20 @@ $field = $method->instance_form_fields['excluded_couriers'];
 assert_same( 'multiselect', $field['type'], 'excluded_couriers is a multiselect field' );
 assert_true( isset( $field['options'][2] ), 'excluded_couriers options include a known courier id' );
 
+// 8) courier_filter_mode: field present, defaults to 'exclude', and reads through config().
+$method = new ShippingMethod();
+assert_true( array_key_exists( 'courier_filter_mode', $method->instance_form_fields ), 'courier_filter_mode field present' );
+assert_same( 'exclude', $method->instance_form_fields['courier_filter_mode']['default'], 'courier_filter_mode default is exclude' );
+assert_same( 'select', $method->instance_form_fields['courier_filter_mode']['type'], 'courier_filter_mode is a select field' );
+$method->settings = $fallback_settings; // no courier_filter_mode saved (old instance)
+assert_same( 'exclude', $method->config()['courier_filter_mode'], 'unset courier_filter_mode defaults to exclude' );
+
+$method = new ShippingMethod();
+$method->settings = $fallback_settings + [ 'courier_filter_mode' => 'include' ];
+assert_same( 'include', $method->config()['courier_filter_mode'], 'courier_filter_mode reads through config()' );
+
+$method = new ShippingMethod();
+$method->settings = $fallback_settings + [ 'courier_filter_mode' => 'bogus' ];
+assert_same( 'exclude', $method->config()['courier_filter_mode'], 'unrecognized courier_filter_mode falls back to exclude' );
+
 echo "smoke-shipping-method: all assertions passed\n";

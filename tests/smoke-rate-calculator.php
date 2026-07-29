@@ -110,6 +110,24 @@ assert_same( 16, $r[0]['courier_id'], 'only the valid-cost row survives' );
 $r = RateCalculator::build_rates( [ 'garbage', [ 'courier_id' => 1, 'courier_name' => 'ok', 'cost' => 5 ] ], [] );
 assert_same( 1, count( $r ), 'skip non-array row' );
 
+// courier_filter_mode: 'exclude' (default when absent) behaves exactly as before.
+$r = RateCalculator::build_rates( $costs, [ 'courier_filter_mode' => 'exclude', 'excluded_couriers' => [ 5 ] ] );
+assert_same( 2, count( $r ), 'exclude mode drops the selected courier' );
+
+// 'include' mode with a selection offers only those couriers, unknown ids included.
+$r = RateCalculator::build_rates( $costs_with_fedex, [ 'courier_filter_mode' => 'include', 'excluded_couriers' => [ 1, 42 ] ] );
+assert_same( 2, count( $r ), 'include mode offers only the selected couriers' );
+assert_same( [ 1, 42 ], array_column( $r, 'courier_id' ), 'include mode keeps only selected ids, unknown id too' );
+
+// 'include' mode with an EMPTY selection must offer everything, not nothing — an admin
+// who flips the mode before picking couriers must not break checkout.
+$r = RateCalculator::build_rates( $costs, [ 'courier_filter_mode' => 'include', 'excluded_couriers' => [] ] );
+assert_same( 3, count( $r ), 'include mode + empty selection offers all couriers' );
+
+// unknown/garbage mode value falls back to 'exclude' semantics.
+$r = RateCalculator::build_rates( $costs, [ 'courier_filter_mode' => 'bogus', 'excluded_couriers' => [ 5 ] ] );
+assert_same( 2, count( $r ), 'unrecognized mode falls back to exclude semantics' );
+
 // fallback_rate(): weight-aware fallback pricing (base + per_kg * weight).
 $fb_config = [ 'fallback_amount' => 50, 'fallback_per_kg_amount' => 15, 'fallback_title' => 'Standard shipping' ];
 $fb = RateCalculator::fallback_rate( $fb_config, 3.0 );

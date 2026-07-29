@@ -13,7 +13,8 @@ defined( 'ABSPATH' ) || exit;
 final class RateCalculator {
 
   public static function build_rates( array $costs, array $config ): array {
-    $excluded = array_map( 'intval', (array) ( $config['excluded_couriers'] ?? [] ) );
+    $mode     = 'include' === ( $config['courier_filter_mode'] ?? 'exclude' ) ? 'include' : 'exclude';
+    $selected = array_map( 'intval', (array) ( $config['excluded_couriers'] ?? [] ) );
     $labels   = (array) ( $config['labels'] ?? [] );
     $rates    = [];
     foreach ( $costs as $c ) {
@@ -29,7 +30,12 @@ final class RateCalculator {
       if ( ! isset( $c['cost'] ) || ! is_numeric( $c['cost'] ) ) {
         continue;
       }
-      if ( in_array( $cid, $excluded, true ) ) {
+      if ( 'exclude' === $mode && in_array( $cid, $selected, true ) ) {
+        continue;
+      }
+      // Include mode with nothing selected must offer everything (an admin who
+      // flips the mode before picking couriers must not break checkout).
+      if ( 'include' === $mode && [] !== $selected && ! in_array( $cid, $selected, true ) ) {
         continue;
       }
       $label = ( isset( $labels[ $cid ] ) && '' !== (string) $labels[ $cid ] )

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-29T08:34:27+00:00\n"
+"POT-Creation-Date: 2026-07-29T09:22:04+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: webbership-smartship\n"
@@ -435,7 +435,7 @@ msgstr ""
 msgid "SmartShip did not return a valid PDF."
 msgstr ""
 
-#: modules/checkout-rates/class-rate-calculator.php:58
+#: modules/checkout-rates/class-rate-calculator.php:64
 msgid "Shipping"
 msgstr ""
 
@@ -457,79 +457,95 @@ msgid "Heading shown above the courier choices at checkout."
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:48
-msgid "Couriers to exclude"
+msgid "Courier filter mode"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:54
-msgid "By default every courier SmartShip returns for the destination is offered at checkout. Select couriers here to hide them. Couriers seen in live SmartShip quotes are added to this list automatically as they appear."
+#: modules/checkout-rates/class-shipping-method.php:52
+msgid "Offer all couriers except the selected"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:58
-msgid "Courier label overrides"
+#: modules/checkout-rates/class-shipping-method.php:53
+msgid "Offer only the selected couriers"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:55
+msgid "Chooses how the \"Couriers\" list below is applied."
 msgstr ""
 
 #: modules/checkout-rates/class-shipping-method.php:61
+msgid "Couriers"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:67
+msgid "In \"exclude\" mode: every courier SmartShip returns is offered except those selected here. In \"include\" mode: only the selected couriers are offered — leave empty to offer all. Note: in include mode, a courier newly added by SmartShip is NOT offered until you select it here."
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:71
+msgid "Courier label overrides"
+msgstr ""
+
+#: modules/checkout-rates/class-shipping-method.php:74
 msgid "Rename couriers at checkout. One per line as courier_id|Custom label (e.g. 16|Curier rapid). Find a courier's id in the order-screen Estimate results."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:65
+#: modules/checkout-rates/class-shipping-method.php:78
 msgid "Markup"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:68
+#: modules/checkout-rates/class-shipping-method.php:81
 msgid "None"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:68
+#: modules/checkout-rates/class-shipping-method.php:81
 msgid "Flat amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:68
+#: modules/checkout-rates/class-shipping-method.php:81
 msgid "Percent"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:69
+#: modules/checkout-rates/class-shipping-method.php:82
 msgid "Optionally add a handling fee on top of each live rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:73
+#: modules/checkout-rates/class-shipping-method.php:86
 msgid "Markup amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:76
+#: modules/checkout-rates/class-shipping-method.php:89
 msgid "With \"Flat amount\", the fee added in your store currency. With \"Percent\", the percentage added to each rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:80
+#: modules/checkout-rates/class-shipping-method.php:93
 #: modules/easybox/class-easybox-method.php:65
 msgid "Fallback label"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:82
-#: modules/checkout-rates/class-shipping-method.php:119
+#: modules/checkout-rates/class-shipping-method.php:95
+#: modules/checkout-rates/class-shipping-method.php:133
 msgid "Standard shipping"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:83
+#: modules/checkout-rates/class-shipping-method.php:96
 #: modules/easybox/class-easybox-method.php:68
 msgid "Label shown to the customer for the fallback rate."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:87
+#: modules/checkout-rates/class-shipping-method.php:100
 #: modules/easybox/class-easybox-method.php:51
 msgid "Fallback base amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:90
+#: modules/checkout-rates/class-shipping-method.php:103
 msgid "Base price charged when live rates cannot be fetched (SmartShip slow, down, no API key, or unable to quote the destination). Set this and the per-kg amount at or above your most expensive real courier route — the fallback exists to keep checkout open, not to be cheap."
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:94
+#: modules/checkout-rates/class-shipping-method.php:107
 #: modules/easybox/class-easybox-method.php:58
 msgid "Fallback per-kg amount"
 msgstr ""
 
-#: modules/checkout-rates/class-shipping-method.php:97
+#: modules/checkout-rates/class-shipping-method.php:110
 #: modules/easybox/class-easybox-method.php:61
 msgid "Added to the fallback base amount for every kg of package weight, so the fallback never underprices a heavy parcel."
 msgstr ""

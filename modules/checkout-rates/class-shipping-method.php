@@ -44,14 +44,27 @@ final class ShippingMethod extends \WC_Shipping_Method {
         'description' => __( 'Heading shown above the courier choices at checkout.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
+      'courier_filter_mode' => [
+        'title'       => __( 'Courier filter mode', 'webbership-smartship' ),
+        'type'        => 'select',
+        'default'     => 'exclude',
+        'options'     => [
+          'exclude' => __( 'Offer all couriers except the selected', 'webbership-smartship' ),
+          'include' => __( 'Offer only the selected couriers', 'webbership-smartship' ),
+        ],
+        'description' => __( 'Chooses how the "Couriers" list below is applied.', 'webbership-smartship' ),
+        'desc_tip'    => true,
+      ],
+      // The option key stays 'excluded_couriers' for back-compat with instances saved
+      // before the include mode existed; only its meaning depends on courier_filter_mode.
       'excluded_couriers' => [
-        'title'       => __( 'Couriers to exclude', 'webbership-smartship' ),
+        'title'       => __( 'Couriers', 'webbership-smartship' ),
         'type'        => 'multiselect',
         'class'       => 'wc-enhanced-select',
         'css'         => 'width: 400px;',
         'default'     => [],
         'options'     => CourierRegistry::known(),
-        'description' => __( 'By default every courier SmartShip returns for the destination is offered at checkout. Select couriers here to hide them. Couriers seen in live SmartShip quotes are added to this list automatically as they appear.', 'webbership-smartship' ),
+        'description' => __( 'In "exclude" mode: every courier SmartShip returns is offered except those selected here. In "include" mode: only the selected couriers are offered — leave empty to offer all. Note: in include mode, a courier newly added by SmartShip is NOT offered until you select it here.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
       'labels' => [
@@ -110,6 +123,7 @@ final class ShippingMethod extends \WC_Shipping_Method {
       }
     }
     return [
+      'courier_filter_mode' => in_array( $this->get_option( 'courier_filter_mode', 'exclude' ), [ 'exclude', 'include' ], true ) ? $this->get_option( 'courier_filter_mode', 'exclude' ) : 'exclude',
       'excluded_couriers' => $this->excluded_couriers(),
       'labels'            => $labels,
       'markup_type'       => in_array( $this->get_option( 'markup_type', 'none' ), [ 'none', 'flat', 'percent' ], true ) ? $this->get_option( 'markup_type', 'none' ) : 'none',
