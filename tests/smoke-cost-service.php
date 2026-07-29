@@ -197,4 +197,51 @@ $de_same_city_pkg = [ 'destination' => [ 'country' => 'DE', 'city' => 'Sacalaz' 
 assert_true( is_array( CostService::costs_for( $de_same_city_pkg, $client ) ), 'country-scoped cache: DE quote still fetched' );
 assert_true( $client->cost_calls > $before, 'country-scoped cache: RO cache entry did not satisfy the DE request' );
 
+// 12) Locker quote: passing a locker_id sets content.locker_id in the /cost body,
+// and caches under a DIFFERENT key than the locker-less quote for the same
+// destination/weight (the API returns only the courier-12 line for a locker call,
+// so it must never satisfy — or be satisfied by — the normal quote's cache entry).
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$easybox_payload = [ [ 'courier_id' => 12, 'courier_name' => 'SameDay EasyBox', 'cost' => 14.5 ] ];
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $easybox_payload ];
+$out_locker = CostService::costs_for( $ro_pkg, $client, 99 );
+assert_true( is_array( $out_locker ), 'locker: returns array' );
+assert_same( 12, (int) $out_locker[0]['courier_id'], 'locker: courier 12 row returned' );
+assert_same( 1, $client->cost_calls, 'locker: one /cost call' );
+assert_same( 99, $client->last_cost_body['content']['locker_id'] ?? null, 'locker: content.locker_id sent' );
+assert_true( abs( CostService::courier_cost( $out_locker, 12 ) - 14.5 ) < 0.001, 'locker: courier_cost finds the EasyBox row' );
+
+// The locker-less quote for the SAME destination/weight is a separate cache entry:
+// calling it right after must still hit /cost (not satisfied by the locker cache).
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+$before = $client->cost_calls;
+$out_plain = CostService::costs_for( $ro_pkg, $client );
+assert_true( $client->cost_calls > $before, 'locker: locker cache does not satisfy the locker-less quote' );
+assert_true( ! isset( $client->last_cost_body['content']['locker_id'] ), 'locker: locker-less quote never sends content.locker_id' );
+
+// And the locker quote itself is cached: a second call with the SAME locker id
+// does not hit /cost again.
+$before = $client->cost_calls;
+$out_locker2 = CostService::costs_for( $ro_pkg, $client, 99 );
+assert_same( $client->cost_calls, $before, 'locker: second call for the same locker id is cached' );
+assert_same( 12, (int) $out_locker2[0]['courier_id'], 'locker: cached result still the EasyBox row' );
+
+// A different locker id is a different cache entry -> /cost hit again.
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $easybox_payload ];
+$before = $client->cost_calls;
+CostService::costs_for( $ro_pkg, $client, 100 );
+assert_true( $client->cost_calls > $before, 'locker: a different locker id is not cached together' );
+
+// 13) Locker quote failure caches separately too (does not poison the locker-less fail-cache).
+$GLOBALS['ss_store'] = [];
+$client = new FakeCostClient();
+$client->cost_result = [ 'ok' => false, 'status' => 612 ];
+assert_true( null === CostService::costs_for( $ro_pkg, $client, 99 ), 'locker: fail -> null' );
+assert_true( any_fail_key_set(), 'locker: failure-cache set' );
+$client->cost_result = [ 'ok' => true, 'status' => 200, 'costs' => $costs_payload ];
+$before = $client->cost_calls;
+assert_true( is_array( CostService::costs_for( $ro_pkg, $client ) ), 'locker: locker-less quote unaffected by the locker fail-cache' );
+assert_true( $client->cost_calls > $before, 'locker: locker-less quote still attempted /cost' );
+
 echo "smoke-cost-service: all assertions passed\n";

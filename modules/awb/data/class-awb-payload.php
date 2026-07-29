@@ -134,7 +134,7 @@ final class AwbPayload {
       $cod = (float) $order->get_total();
     }
 
-    return [
+    $content = [
       'package_content'  => 'Comanda ' . $order->get_order_number(),
       'parcels'          => 1,
       'weight'           => $weight,
@@ -147,6 +147,16 @@ final class AwbPayload {
       'open_package'     => 0,
       'order_id'         => (string) $order->get_order_number(),
     ];
+
+    // EasyBox orders (locker chosen at checkout) must ship on courier 12 with the
+    // locker id attached — see AwbMetabox::ajax_issue(), which forces courier_id
+    // to 12 whenever this meta is set.
+    $locker_id = (int) $order->get_meta( '_webbership_smartship_easybox_id' );
+    if ( $locker_id > 0 ) {
+      $content['locker_id'] = $locker_id;
+    }
+
+    return $content;
   }
 
   public static function sender_from_account( array $sender ): array {

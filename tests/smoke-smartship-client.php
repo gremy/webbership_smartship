@@ -89,11 +89,64 @@ assert_true( false === $r['ok'], 'validation: ok false on body 999' );
 assert_same( 'validation', $r['code'], 'validation: code' );
 assert_same( 1, count( $r['errors'] ), 'validation: errors carried' );
 
-// 3) HTTP 200 + body status 205 -> ok false, iban_missing.
-ss_set_response( 200, [ 'status' => 205, 'message' => 'iban' ] );
+// 3) Error codes are per-endpoint, not global (2026-07-29 docs refresh) — the SAME
+// numeric status means different things depending on the path.
+
+// 205 on /awb/new is no longer "iban_missing" (that reverse-engineered mapping is
+// gone) — with no endpoint-specific meaning, it falls through to the generic api_error.
+ss_set_response( 200, [ 'status' => 205, 'message' => 'whatever' ] );
 $r = $client->request( 'POST', '/awb/new', [ 'body' => [] ] );
-assert_true( false === $r['ok'], 'iban: ok false' );
-assert_same( 'iban_missing', $r['code'], 'iban: code' );
+assert_true( false === $r['ok'], '/awb/new 205: ok false' );
+assert_same( 'api_error', $r['code'], '/awb/new 205: no longer iban_missing, falls to api_error' );
+
+// 205 on /awb/cancel means "already cancelled".
+ss_set_response( 200, [ 'status' => 205, 'message' => 'already gone' ] );
+$r = $client->request( 'GET', '/awb/cancel/AWB1' );
+assert_same( 'already_cancelled', $r['code'], '/awb/cancel 205: already_cancelled' );
+
+// 201 on /cost means "invalid IBAN", with the actionable settings hint.
+ss_set_response( 200, [ 'status' => 201, 'message' => 'bad iban' ] );
+$r = $client->request( 'POST', '/cost', [ 'body' => [] ] );
+assert_same( 'invalid_iban', $r['code'], '/cost 201: invalid_iban' );
+assert_true( false !== strpos( $r['message'], 'plugin settings' ), '/cost 201: actionable IBAN hint' );
+
+// 612 on /cost means "locker required" (curier_preferat=12 without a valid locker_id).
+ss_set_response( 200, [ 'status' => 612, 'message' => 'need locker' ] );
+$r = $client->request( 'POST', '/cost', [ 'body' => [] ] );
+assert_same( 'locker_required', $r['code'], '/cost 612: locker_required' );
+
+// 201 on /geolocation/cities means "specify county id" (unchanged semantics, now scoped).
+ss_set_response( 200, [ 'status' => 201, 'message' => 'specify county' ] );
+$r = $client->request( 'GET', '/geolocation/cities' );
+assert_same( 'specify_county', $r['code'], '/geolocation/cities 201: specify_county' );
+ss_set_response( 200, [ 'status' => 202, 'message' => 'no such county' ] );
+$r = $client->request( 'GET', '/geolocation/cities' );
+assert_same( 'county_not_found', $r['code'], '/geolocation/cities 202: county_not_found' );
+// The SAME codes on a DIFFERENT endpoint don't inherit that meaning.
+ss_set_response( 200, [ 'status' => 201, 'message' => 'x' ] );
+$r = $client->request( 'POST', '/awb/new', [ 'body' => [] ] );
+assert_same( 'api_error', $r['code'], '/awb/new 201: not specify_county (endpoint-scoped)' );
+
+// EasyBox-specific /awb/new codes.
+foreach ( [
+  605  => 'insufficient_credit',
+  606  => 'courier_no_cod',
+  806  => 'locker_invalid',
+  6589 => 'locker_unavailable',
+  6590 => 'locker_no_cod',
+  4004 => 'byoc_pairing',
+] as $status => $expected_code ) {
+  ss_set_response( 200, [ 'status' => $status, 'message' => 'x' ] );
+  $r = $client->request( 'POST', '/awb/new', [ 'body' => [] ] );
+  assert_same( $expected_code, $r['code'], "/awb/new $status: $expected_code" );
+}
+
+// 999 (validation) means the same thing on every endpoint.
+foreach ( [ '/cost', '/awb/new', '/awb/cancel', '/geolocation/cities' ] as $ep ) {
+  ss_set_response( 200, [ 'status' => 999, 'message' => 'bad', 'erori' => [ [ 'id' => 1, 'message' => 'x' ] ] ] );
+  $r = $client->request( 'POST', $ep, [ 'body' => [] ] );
+  assert_same( 'validation', $r['code'], "$ep 999: validation everywhere" );
+}
 
 // 4) Transport error -> ok false, status 0.
 $GLOBALS['webbership_ss_http'] = new WP_Error( 'http_request_failed', 'down' );

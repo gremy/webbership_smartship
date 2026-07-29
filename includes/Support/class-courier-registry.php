@@ -26,9 +26,12 @@ final class CourierRegistry {
     3  => 'FanCourier',
     5  => 'DragonStar',
     6  => 'DPD',
+    8  => 'PTT Express',
+    12 => 'SameDay EasyBox',
     14 => 'PTT Express',
     16 => 'SmartShip Delivery',
     19 => 'FedEx',
+    35 => 'Komy',
   ];
 
   /** Seed merged with learned names (learned wins on id collisions — it's live data). */

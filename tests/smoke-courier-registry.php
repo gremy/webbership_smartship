@@ -22,7 +22,12 @@ use Webbership\Smartship\Support\CourierRegistry;
 // 1) Fresh install: known() returns the seed map, unmodified.
 $known = CourierRegistry::known();
 assert_same( 'SameDay', $known[2] ?? null, 'seed: courier 2 is SameDay' );
-assert_same( 'FanCourier', $known[3] ?? null, 'seed: courier 3 is FanCourier' );
+assert_same( 'FanCourier', $known[3] ?? null, 'seed: courier 3 is FanCourier (display-only, BYOC-only since 2026-07-29)' );
+assert_same( 'DPD', $known[6] ?? null, 'seed: courier 6 is DPD (display-only, BYOC-only since 2026-07-29)' );
+assert_same( 'PTT Express', $known[8] ?? null, 'seed: courier 8 is PTT Express' );
+assert_same( 'SameDay EasyBox', $known[12] ?? null, 'seed: courier 12 is SameDay EasyBox' );
+assert_same( 'PTT Express', $known[14] ?? null, 'seed: courier 14 is also PTT Express (a distinct service from 8)' );
+assert_same( 'Komy', $known[35] ?? null, 'seed: courier 35 is Komy' );
 assert_true( ! isset( $known[99] ), 'seed: an unseen courier id is absent' );
 
 // 2) learn() with a courier the seed doesn't know -> it appears in known(), and the

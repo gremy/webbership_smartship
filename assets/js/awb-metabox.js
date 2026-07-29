@@ -246,26 +246,22 @@
       .fail( function () { $t.text( WebbershipSmartShip.i18n.requestFailed ); } );
   } );
 
-  // EasyBox hand-off: copy the recipient block for the SmartShip form.
-  $( document ).on( 'click', '.webbership-ss-easybox-copy', function () {
-    var $b   = $( this );
-    var txt  = $b.data( 'recipient' );
-    var orig = $b.text();
-    var done = function () { $b.text( WebbershipSmartShip.i18n.copied ); setTimeout( function () { $b.text( orig ); }, 1500 ); };
-    // Only confirm after a genuinely successful copy; otherwise try the textarea fallback.
-    var fallback = function () {
-      var $ta = $( '<textarea/>' ).val( txt ).appendTo( 'body' ).select();
-      var copied = false;
-      try { copied = document.execCommand( 'copy' ); } catch ( e ) {}
-      $ta.remove();
-      if ( copied ) { done(); }
-    };
-    if ( navigator.clipboard && navigator.clipboard.writeText ) {
-      navigator.clipboard.writeText( txt ).then( done, fallback );
-    } else {
-      fallback();
+  // EasyBox hand-off: the recipient address may not have resolved confidently
+  // (see AwbMetabox::render_easybox_handoff()). Reuse the SAME picker functions
+  // the normal Estimate flow uses, seeded from the resolved address the PHP
+  // embedded — no ajax_estimate() round-trip (there's no courier list to fetch,
+  // the courier is already fixed to EasyBox).
+  var $ebResolved = $( '.webbership-ss-easybox-resolved' );
+  if ( $ebResolved.length ) {
+    var ebResolved = $ebResolved.data( 'resolved' );
+    if ( ebResolved ) {
+      if ( ebResolved.city_id ) {
+        maybeRenderSectorPicker();
+      } else {
+        maybeRenderCityPicker( ebResolved );
+      }
     }
-  } );
+  }
 
   // EasyBox hand-off: paste the manually-created AWB back onto the order.
   $( document ).on( 'click', '.webbership-ss-easybox-save', function () {

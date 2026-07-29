@@ -3,6 +3,7 @@ declare(strict_types=1);
 define( 'ABSPATH', __DIR__ );
 function __( $s, $d = null ) { return $s; }
 function sanitize_text_field( $s ) { return is_string( $s ) ? trim( $s ) : ''; }
+require __DIR__ . '/../modules/checkout-rates/class-rate-calculator.php';
 require __DIR__ . '/../modules/easybox/class-easybox-pricing.php';
 use Webbership\Smartship\Modules\EasyBox\EasyBoxPricing;
 
@@ -12,38 +13,36 @@ function same( $a, $b, $m ) {
   if ( $a === $b ) { $pass++; } else { $fail++; echo "FAIL $m: " . var_export( $a, true ) . " !== " . var_export( $b, true ) . "\n"; }
 }
 
-// default factor 0.80
+// config(): no more factor/easybox_factor — pricing is a live /cost quote now.
 $cfg = EasyBoxPricing::config( [] );
-same( 0.80, $cfg['factor'], 'default factor 0.80' );
-same( 20.73, EasyBoxPricing::price( 25.91, $cfg ), 'price = 25.91 * 0.80 rounded' );
+same( false, array_key_exists( 'factor', $cfg ), 'config: no factor key anymore' );
+same( false, array_key_exists( 'easybox_factor', $cfg ), 'config: no easybox_factor key anymore' );
+same( 'Ridicare Sameday Point / EasyBox', $cfg['title'], 'title default' );
+same( 0.0, $cfg['fallback_amount'], 'fallback_amount default 0' );
+same( 0.0, $cfg['fallback_per_kg_amount'], 'fallback_per_kg_amount default 0' );
+same( 'Ridicare Sameday Point / EasyBox', $cfg['fallback_title'], 'fallback_title default' );
 
-// percent setting -> factor; clamped to a sane range
-same( 0.65, EasyBoxPricing::config( [ 'easybox_factor' => '65' ] )['factor'], 'percent 65 -> 0.65' );
-same( 0.10, EasyBoxPricing::config( [ 'easybox_factor' => '0' ] )['factor'], 'clamp low to 0.10' );
-same( 3.00, EasyBoxPricing::config( [ 'easybox_factor' => '9999' ] )['factor'], 'clamp high to 3.00' );
-
-// blank / non-numeric factor → DEFAULT (not 0.10); explicit numeric '0' clamps to floor
-same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => '' ] )['factor'], 'blank factor -> default 0.80' );
-same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => '  ' ] )['factor'], 'whitespace factor -> default' );
-same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => null ] )['factor'], 'null factor -> default' );
-same( 0.80, EasyBoxPricing::config( [ 'easybox_factor' => 'abc' ] )['factor'], 'non-numeric factor -> default' );
-same( 0.10, EasyBoxPricing::config( [ 'easybox_factor' => '0' ] )['factor'], 'explicit 0 clamps to floor' );
-
-// title: default + sanitize (trim)
-same( 'Ridicare Sameday Point / EasyBox', EasyBoxPricing::config( [] )['title'], 'title default' );
+// title: sanitize (trim)
 same( 'Pickup', EasyBoxPricing::config( [ 'title' => '  Pickup  ' ] )['title'], 'title trimmed' );
 
-// negative fallback amount floored at 0
-same( 0.0, EasyBoxPricing::config( [ 'fallback_amount' => '-9' ] )['fallback'], 'negative fallback floored' );
+// fallback_amount / fallback_per_kg_amount: parsed, floored at 0 (never negative)
+same( 25.0, EasyBoxPricing::config( [ 'fallback_amount' => '25' ] )['fallback_amount'], 'fallback_amount parsed' );
+same( 0.0, EasyBoxPricing::config( [ 'fallback_amount' => '-9' ] )['fallback_amount'], 'negative fallback_amount floored at 0' );
+same( 15.0, EasyBoxPricing::config( [ 'fallback_per_kg_amount' => '15' ] )['fallback_per_kg_amount'], 'fallback_per_kg_amount parsed' );
+same( 0.0, EasyBoxPricing::config( [ 'fallback_per_kg_amount' => '-5' ] )['fallback_per_kg_amount'], 'negative fallback_per_kg_amount floored at 0' );
 
-// negative cost never goes below 0
-same( 0.0, EasyBoxPricing::price( -5.0, $cfg ), 'negative cost floored at 0' );
-
-// fallback shape
-$fb = EasyBoxPricing::fallback( EasyBoxPricing::config( [ 'fallback_amount' => '18.5', 'fallback_title' => 'Locker' ] ) );
-same( 18.5, $fb['cost'], 'fallback cost' );
-same( 'webbership_smartship_easybox', $fb['id'], 'fallback id' );
+// fallback(): weight-aware, shares RateCalculator::fallback_rate()'s base + per_kg * weight math.
+$fb_cfg = EasyBoxPricing::config( [ 'fallback_amount' => '20', 'fallback_per_kg_amount' => '5', 'fallback_title' => 'Locker' ] );
+$fb = EasyBoxPricing::fallback( $fb_cfg, 3.0 );
+same( 35.0, $fb['cost'], 'fallback: base 20 + 5*3kg = 35' );
 same( 'Locker', $fb['label'], 'fallback label' );
+
+// fallback() with no weight arg defaults to 0kg -> just the base amount.
+same( 20.0, EasyBoxPricing::fallback( $fb_cfg, 0.0 )['cost'], 'fallback: 0kg -> base amount only' );
+
+// fallback() never goes negative even with weird input (RateCalculator floors internally).
+$zero_cfg = EasyBoxPricing::config( [] );
+same( 0.0, EasyBoxPricing::fallback( $zero_cfg, 5.0 )['cost'], 'fallback: all-zero config -> 0 cost' );
 
 echo ( $fail === 0 ) ? "smoke-easybox-pricing: all $pass passed\n" : "smoke-easybox-pricing: $fail FAILED\n";
 exit( $fail === 0 ? 0 : 1 );

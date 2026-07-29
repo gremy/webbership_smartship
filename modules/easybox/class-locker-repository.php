@@ -80,4 +80,49 @@ final class LockerRepository {
 
     return $lockers;
   }
+
+  /**
+   * Pick a deterministic representative locker for a county-level EasyBox `/cost`
+   * quote: the first active locker whose `county` name matches the destination
+   * (diacritics-insensitive). `$lockers` is expected to already be active-only
+   * (i.e. the output of all()). Pure/testable — no WP/HTTP calls beyond
+   * remove_accents() when it's available.
+   *
+   * ponytail: one representative per county, not one quote per locker — SmartShip's
+   * 2026-07-29 EasyBox pricing has no evidence of varying within a county. Reprice
+   * per-locker if that ever changes.
+   *
+   * @param array<int,array<string,mixed>> $lockers Normalized locker rows (see all()).
+   * @return array<string,mixed>|null The matching locker row, or null when $lockers is
+   *   empty OR no locker's county matches — the caller must fall back rather than
+   *   quote off a locker in an unrelated county.
+   */
+  public static function representative_locker( array $lockers, string $county_name ): ?array {
+    if ( empty( $lockers ) ) {
+      return null;
+    }
+    $needle = self::normalize_county( $county_name );
+    if ( '' === $needle ) {
+      return null;
+    }
+    foreach ( $lockers as $locker ) {
+      if ( self::normalize_county( (string) ( $locker['county'] ?? '' ) ) === $needle ) {
+        return $locker;
+      }
+    }
+    return null;
+  }
+
+  /** Diacritics- and case-insensitive county name key, for matching against WC's RO state names. */
+  private static function normalize_county( string $name ): string {
+    $name = trim( $name );
+    if ( '' === $name ) {
+      return '';
+    }
+    $name = function_exists( 'remove_accents' ) ? remove_accents( $name ) : strtr( $name, [
+      'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ş' => 's', 'ț' => 't', 'ţ' => 't',
+      'Ă' => 'A', 'Â' => 'A', 'Î' => 'I', 'Ș' => 'S', 'Ş' => 'S', 'Ț' => 'T', 'Ţ' => 'T',
+    ] );
+    return strtolower( $name );
+  }
 }

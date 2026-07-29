@@ -132,4 +132,19 @@ assert_true( null === $out, 'failure: returns null, not []' );
 assert_same( 1, $failing->calls, 'failure: upstream was consulted' );
 assert_true( false === get_transient( 'webbership_ss_lockers' ), 'failure: nothing cached' );
 
+// 6) representative_locker(): county match, diacritics-insensitive against WC's RO
+// state names (e.g. 'Timiș' from WC()->countries->get_states('RO') vs the locker
+// list's plain-ASCII 'Timis'); returns null (never an unrelated locker) when no
+// county matches (or none was given), or when the list is empty.
+$bucuresti = [ 'id' => 2, 'name' => 'easybox OMV Belu', 'county' => 'Bucuresti', 'city' => 'Sectorul 4' ];
+$timisoara = [ 'id' => 7, 'name' => 'easybox Iulius Mall', 'county' => 'Timis', 'city' => 'Timisoara' ];
+$lockers   = [ $bucuresti, $timisoara ];
+
+assert_same( $timisoara, LockerRepository::representative_locker( $lockers, 'Timiș' ), 'representative: diacritics-insensitive county match' );
+assert_same( $timisoara, LockerRepository::representative_locker( $lockers, 'timis' ), 'representative: case-insensitive county match' );
+assert_same( $bucuresti, LockerRepository::representative_locker( $lockers, 'Bucuresti' ), 'representative: exact county match' );
+assert_true( null === LockerRepository::representative_locker( $lockers, 'Cluj' ), 'representative: returns null when county unmatched' );
+assert_true( null === LockerRepository::representative_locker( $lockers, '' ), 'representative: no county given -> null' );
+assert_true( null === LockerRepository::representative_locker( [], 'Bucuresti' ), 'representative: empty locker list -> null' );
+
 echo "smoke-locker-repository: all assertions passed\n";

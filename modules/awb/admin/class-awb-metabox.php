@@ -49,7 +49,6 @@ final class AwbMetabox {
       'ajax'  => admin_url( 'admin-ajax.php' ),
       'nonce' => wp_create_nonce( self::NONCE ),
       'i18n'  => [
-        'copied'            => __( 'Copied!', 'webbership-smartship' ),
         'enterAwb'          => __( 'Enter the AWB number.', 'webbership-smartship' ),
         'saving'            => __( 'Saving…', 'webbership-smartship' ),
         'failed'            => __( 'Failed', 'webbership-smartship' ),
@@ -142,13 +141,15 @@ final class AwbMetabox {
     if ( '' !== (string) $order->get_meta( '_webbership_smartship_awb' ) ) {
       wp_send_json_error( [ 'message' => __( 'This order already has an AWB. Cancel it first to issue a new one.', 'webbership-smartship' ) ] );
     }
-    // EasyBox orders must use the manual hand-off (SmartShip has no locker AWB on the
-    // partner API) — never auto-create a home-delivery AWB for one at the server boundary.
+    // EasyBox orders always ship on courier 12 (SameDay EasyBox) — force it so a
+    // stale/tampered posted courier_id can never pick a different courier. The
+    // locker id itself rides along via AwbPayload::content_from_order()'s order-meta read.
     if ( '' !== (string) $order->get_meta( '_webbership_smartship_easybox_id' ) ) {
-      wp_send_json_error( [ 'message' => __( 'This is an EasyBox order — create the locker AWB in SmartShip and paste the number back here.', 'webbership-smartship' ) ] );
+      $courier_id = 12;
+    } else {
+      $courier_id = isset( $_POST['courier_id'] ) ? absint( $_POST['courier_id'] ) : 0;
+      if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'webbership-smartship' ) ] ); }
     }
-    $courier_id = isset( $_POST['courier_id'] ) ? absint( $_POST['courier_id'] ) : 0;
-    if ( ! $courier_id ) { wp_send_json_error( [ 'message' => __( 'Choose a courier.', 'webbership-smartship' ) ] ); }
 
     $resolved = $this->resolve_for( $order );
     if ( AwbPayload::is_domestic( (string) ( $resolved['country'] ?? 'RO' ) ) ) {
@@ -458,37 +459,48 @@ final class AwbMetabox {
   }
 
   /**
-   * EasyBox locker hand-off: SmartShip's V2 API can't issue locker AWBs, so the
-   * merchant creates it by hand in smartship.ro and pastes the number back here.
-   * Shows the chosen locker + the order recipient (to fill the SmartShip form),
-   * a link out, a copy-recipient helper, and the paste-back field.
+   * EasyBox order, no AWB yet: SmartShip's `/awb/new` now supports locker AWBs
+   * (courier 12 + content.locker_id — see AwbPayload::content_from_order()), so
+   * the courier is fixed (no picker needed) and Issue AWB creates the shipment
+   * directly. The hidden radio just satisfies the existing `.webbership-ss-issue`
+   * click handler's "a courier is chosen" check; ajax_issue() forces courier_id to
+   * 12 server-side regardless of what's posted. The manual paste-back stays as a
+   * backup for a locker AWB created by hand in the SmartShip dashboard.
    */
   private function render_easybox_handoff( $order ): void {
-    $name    = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
-    if ( '' === $name ) { $name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ); }
-    $phone   = (string) ( $order->get_shipping_phone() ?: $order->get_billing_phone() );
-    $addr1   = (string) $order->get_shipping_address_1() !== '' ? $order->get_shipping_address_1() : $order->get_billing_address_1();
-    $addr2   = (string) $order->get_shipping_address_1() !== '' ? $order->get_shipping_address_2() : $order->get_billing_address_2();
-    $city    = (string) ( $order->get_shipping_city() ?: $order->get_billing_city() );
-    $address = trim( $addr1 . ( '' !== (string) $addr2 ? ', ' . $addr2 : '' ) );
-
-    // One block the merchant copies into the SmartShip form; also the recipient view.
-    $recipient = implode( "\n", array_filter( [ $name, $phone, $address, $city ] ) );
+    $locker_name = (string) $order->get_meta( '_webbership_smartship_easybox_name' );
 
     echo '<p><strong>' . esc_html__( 'EasyBox locker', 'webbership-smartship' ) . '</strong></p>';
-    echo '<p>' . esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_name' ) ) . '<br/>';
+    echo '<p>' . esc_html( $locker_name ) . '<br/>';
     echo esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_address' ) ) . '<br/>';
     echo esc_html( (string) $order->get_meta( '_webbership_smartship_easybox_city' ) ) . '</p>';
 
-    echo '<p><strong>' . esc_html__( 'Recipient', 'webbership-smartship' ) . '</strong></p>';
-    echo '<pre class="webbership-ss-recipient">' . esc_html( $recipient ) . '</pre>';
-    echo '<p><button type="button" class="button webbership-ss-easybox-copy" data-recipient="' . esc_attr( $recipient ) . '">' . esc_html__( 'Copy recipient', 'webbership-smartship' ) . '</button></p>';
+    echo '<p>' . sprintf(
+      /* translators: %s: the chosen locker's name */
+      esc_html__( 'Courier: SameDay EasyBox — %s', 'webbership-smartship' ),
+      esc_html( $locker_name )
+    ) . '</p>';
+    echo '<input type="radio" name="ss_courier" value="12" checked hidden />';
 
-    echo '<p class="description">' . esc_html__( 'Create the locker AWB in SmartShip, then paste the number back here to enable printing and tracking.', 'webbership-smartship' ) . '</p>';
-    echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://smartship.ro/trimitere-noua' ) . '">' . esc_html__( 'Create EasyBox AWB in SmartShip ↗', 'webbership-smartship' ) . '</a></p>';
+    // ajax_issue() refuses ("Resolve the destination city first") whenever the
+    // recipient address doesn't resolve confidently — same gate as the normal
+    // (non-easybox) flow. That flow gets its city/sector picker from a JS
+    // response to ajax_estimate(); this flow has no Estimate step (the courier
+    // is already fixed), so embed the resolved address here and let the SAME
+    // picker JS (maybeRenderCityPicker()/maybeRenderSectorPicker() in
+    // awb-metabox.js) render from it on page load instead of from an AJAX
+    // response — no new markup, no new endpoint. get_counties()/get_cities()
+    // are transient-cached for 12h (SmartShipClient), so this costs nothing on
+    // repeat page loads.
+    $resolved = $this->resolve_for( $order );
+    if ( empty( $resolved['confident'] ) ) {
+      echo '<div class="webbership-ss-easybox-resolved" data-resolved="' . esc_attr( wp_json_encode( $resolved ) ) . '"></div>';
+    }
 
-    echo '<p><input type="text" class="webbership-ss-easybox-awb" placeholder="' . esc_attr__( 'Paste AWB number', 'webbership-smartship' ) . '" /> ';
-    echo '<button type="button" class="button webbership-ss-easybox-save">' . esc_html__( 'Save AWB', 'webbership-smartship' ) . '</button></p>';
+    $this->render_package_fields( $order );
+    echo '<button type="button" class="button button-primary webbership-ss-issue">' . esc_html__( 'Issue AWB', 'webbership-smartship' ) . '</button>';
     echo '<div class="webbership-ss-msg"></div>';
+
+    $this->render_paste_back();
   }
 }

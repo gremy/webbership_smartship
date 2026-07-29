@@ -13,8 +13,11 @@ defined( 'ABSPATH' ) || exit;
  * Shared, cached SameDay-style /cost fetch for a checkout package's destination
  * (Romania or international).
  *
- * Extracted from the live-rates ShippingMethod so the EasyBox method reuses the SAME
- * cached transient (rate cache + failure-cache) — one /cost round-trip, not two.
+ * Extracted from the live-rates ShippingMethod so both methods share this one
+ * implementation. The EasyBox method calls it with a locker id, which prices
+ * ONLY the SameDay EasyBox line for that locker and caches it under its own
+ * locker-scoped key (see the $locker_id doc below) — a separate /cost round-trip
+ * and cache entry from the locker-less quote used by the live-rates method.
  *
  * @package Webbership\Smartship\Support
  */
@@ -30,11 +33,19 @@ final class CostService {
    * for non-RO recipients isn't documented, so this is a best-effort shape; a
    * rejection from the API is just a failed /cost call, which already falls back.
    *
-   * @param array          $package WooCommerce shipping package (destination + contents).
-   * @param SmartShipClient $client  SmartShip client (duck-typed in tests).
+   * Passing $locker_id > 0 quotes the SameDay EasyBox line for that locker instead
+   * (content.locker_id set — see the EasyBox delivery flow in
+   * docs/reference/smartship-api.md). Per the API, a locker-scoped /cost call
+   * returns ONLY the courier-12 line, so this is a separate cache entry (the locker
+   * id is folded into the cache-key hash) from the locker-less quote for the same
+   * destination/weight — never confuse the two.
+   *
+   * @param array          $package   WooCommerce shipping package (destination + contents).
+   * @param SmartShipClient $client   SmartShip client (duck-typed in tests).
+   * @param int            $locker_id EasyBox locker id to quote, or 0 for the normal (non-locker) quote.
    * @return array|null The normalized costs[] (each row {courier_id,courier_name,cost,...}) or null.
    */
-  public static function costs_for( array $package, $client ): ?array {
+  public static function costs_for( array $package, $client, int $locker_id = 0 ): ?array {
     $dest    = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
     $country = strtoupper( (string) ( $dest['country'] ?? '' ) );
     if ( '' === $country ) {
@@ -71,7 +82,10 @@ final class CostService {
 
     // Country-scoped so RO and international quotes for the same city/weight
     // combination never collide (they hit different SmartShip pricing anyway).
-    $hash   = md5( $country . '|' . $cache_locality . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() );
+    // Locker-scoped so a locker quote and the normal quote for the same
+    // destination/weight never share a cache entry (a locker call only ever
+    // returns the courier-12 line, never the full courier list).
+    $hash   = md5( $country . '|' . $cache_locality . '|' . $weight . '|' . Settings::sender_id() . '|' . Settings::api_key() . ( $locker_id > 0 ? '|locker' . $locker_id : '' ) );
     $key    = 'webbership_ss_rate_' . $hash;
     // Scoped per destination (same hash as the rate-cache key) so one bad destination
     // doesn't suppress live rates for every other customer's checkout for 60s.
@@ -84,10 +98,14 @@ final class CostService {
       return null;
     }
 
+    $content = [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ];
+    if ( $locker_id > 0 ) {
+      $content['locker_id'] = $locker_id;
+    }
     $body = [
       'recipient' => [ 'name' => 'Estimate', 'address' => (string) ( $dest['address'] ?? '' ), 'email' => 'estimate@example.com', 'city' => $recipient_city, 'phone' => '0700000000', 'country' => $country, 'sector' => $sector ],
       'sender'    => $sender,
-      'content'   => [ 'package_content' => 'Estimate', 'parcels' => 1, 'weight' => $weight, 'cash_on_delivery' => 0, 'length' => 10, 'width' => 10, 'height' => 10 ],
+      'content'   => $content,
     ];
     $res = $client->cost( $body, SmartShipClient::RATE_TIMEOUT );
     if ( empty( $res['ok'] ) ) {

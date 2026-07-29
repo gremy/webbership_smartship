@@ -57,6 +57,7 @@ namespace {
     public function is_paid() { return $this->d['paid'] ?? false; }
     public function get_order_number() { return $this->d['num'] ?? '0'; }
     public function get_items() { return $this->d['items'] ?? []; }
+    public function get_meta( $key ) { return $this->d['meta'][ $key ] ?? ''; }
   }
   class FakeItem {
     private $p; private $q;
@@ -214,6 +215,22 @@ namespace {
   assert_same( 10, $c13['length'], 'empty package: length default' );
   assert_same( 10, $c13['width'], 'empty package: width default' );
   assert_same( 10, $c13['height'], 'empty package: height default' );
+
+  // content: an order with the EasyBox locker meta gets content.locker_id; an
+  // ordinary order (no such meta) never carries the key at all.
+  $o_easybox = new FakeOrder( [ 'num' => '20', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [], 'meta' => [ '_webbership_smartship_easybox_id' => '42' ] ] );
+  $c_easybox = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o_easybox );
+  assert_same( 42, $c_easybox['locker_id'], 'easybox order: content.locker_id set from order meta' );
+
+  $o_plain = new FakeOrder( [ 'num' => '21', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [] ] );
+  $c_plain = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o_plain );
+  assert_true( ! array_key_exists( 'locker_id', $c_plain ), 'plain order: no locker_id key at all' );
+
+  // A zero/blank easybox meta value must not produce locker_id: 0 (SmartShip would
+  // read that as "no locker" for the wrong reason — absence must mean absence).
+  $o_zero = new FakeOrder( [ 'num' => '22', 'total' => '10', 'paid' => true, 'pay' => 'card', 'items' => [], 'meta' => [ '_webbership_smartship_easybox_id' => '0' ] ] );
+  $c_zero = Webbership\Smartship\Modules\Awb\Data\AwbPayload::content_from_order( $o_zero );
+  assert_true( ! array_key_exists( 'locker_id', $c_zero ), 'zero easybox meta: no locker_id key' );
 
   // build() forwards $package into content_from_order().
   $built = Webbership\Smartship\Modules\Awb\Data\AwbPayload::build( $o11, [ 'city_id' => 1 ], [], 5, [ 'weight' => 0.5, 'length' => 25 ] );

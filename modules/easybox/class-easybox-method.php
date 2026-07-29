@@ -11,9 +11,11 @@ use Webbership\Smartship\Settings\Settings;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * EasyBox locker shipping method: one rate priced from the live SameDay home
- * rate × a configurable factor, with a flat fallback when no live rate is
- * available. The customer picks a locker on a map at checkout (later task).
+ * EasyBox locker shipping method: one rate priced from a real `/cost` quote for a
+ * representative locker in the destination county (SameDay EasyBox, courier id 12),
+ * with a weight-aware flat fallback when no live quote is available. The customer
+ * picks their exact locker on a map at checkout (separate from the county-level
+ * locker used only to price the rate).
  *
  * @package Webbership\Smartship\Modules\EasyBox
  */
@@ -23,7 +25,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     $this->id                 = EasyBoxPricing::METHOD_ID;
     $this->instance_id        = absint( $instance_id );
     $this->method_title       = __( 'Ridicare Sameday Point / EasyBox (SameDay)', 'webbership-smartship' );
-    $this->method_description = __( 'Locker delivery, priced from the live SameDay rate. Customers choose their locker on a map at checkout.', 'webbership-smartship' );
+    $this->method_description = __( 'Locker delivery, priced from a live SameDay EasyBox quote. Customers choose their locker on a map at checkout.', 'webbership-smartship' );
     $this->supports           = [ 'shipping-zones', 'instance-settings', 'instance-settings-modal' ];
     $this->init();
   }
@@ -45,25 +47,25 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
         'description' => __( 'Label shown to the customer at checkout.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
-      'easybox_factor' => [
-        'title'       => __( 'Price factor (%)', 'webbership-smartship' ),
-        'type'        => 'text',
-        'default'     => '80',
-        'description' => __( 'Percent of the live SameDay home rate. 80 means 20% off — the measured EasyBox discount.', 'webbership-smartship' ),
-        'desc_tip'    => true,
-      ],
       'fallback_amount' => [
-        'title'       => __( 'Fallback flat rate', 'webbership-smartship' ),
+        'title'       => __( 'Fallback base amount', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => '0',
-        'description' => __( 'Flat price charged when no live SameDay rate is available (SmartShip slow or down, or the address is outside Romania).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
+        'description' => __( 'Base price charged when no live EasyBox quote is available (SmartShip slow or down, no lockers cached, or the address is outside Romania).', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
+        'desc_tip'    => true,
+      ],
+      'fallback_per_kg_amount' => [
+        'title'       => __( 'Fallback per-kg amount', 'webbership-smartship' ),
+        'type'        => 'text',
+        'default'     => '0',
+        'description' => __( 'Added to the fallback base amount for every kg of package weight, so the fallback never underprices a heavy parcel.', 'webbership-smartship' ) . ' ' . Tax::shipping_note(),
         'desc_tip'    => true,
       ],
       'fallback_title' => [
         'title'       => __( 'Fallback label', 'webbership-smartship' ),
         'type'        => 'text',
         'default'     => __( 'Ridicare Sameday Point / EasyBox', 'webbership-smartship' ),
-        'description' => __( 'Label shown to the customer for the fallback flat rate.', 'webbership-smartship' ),
+        'description' => __( 'Label shown to the customer for the fallback rate.', 'webbership-smartship' ),
         'desc_tip'    => true,
       ],
     ];
@@ -77,10 +79,10 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
    */
   public function config(): array {
     return EasyBoxPricing::config( [
-      'title'           => $this->get_option( 'title' ),
-      'easybox_factor'  => $this->get_option( 'easybox_factor' ),
-      'fallback_amount' => $this->get_option( 'fallback_amount' ),
-      'fallback_title'  => $this->get_option( 'fallback_title' ),
+      'title'                  => $this->get_option( 'title' ),
+      'fallback_amount'        => $this->get_option( 'fallback_amount' ),
+      'fallback_per_kg_amount' => $this->get_option( 'fallback_per_kg_amount' ),
+      'fallback_title'         => $this->get_option( 'fallback_title' ),
     ] );
   }
 
@@ -91,7 +93,7 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     // Checked BEFORE the block-checkout gate: a renewal that priced its shipping
     // via EasyBox must keep getting its fallback rate even on a blocks store.
     if ( wp_doing_cron() || ! function_exists( 'WC' ) || null === WC()->session ) {
-      $this->add_fallback( $config );
+      $this->add_fallback( $config, $package );
       return;
     }
 
@@ -107,26 +109,40 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
 
     $dest = isset( $package['destination'] ) && is_array( $package['destination'] ) ? $package['destination'] : [];
     if ( 'RO' !== ( $dest['country'] ?? '' ) ) {
-      $this->add_fallback( $config );
+      $this->add_fallback( $config, $package );
       return;
     }
 
     $api_key = Settings::api_key();
     if ( '' === $api_key ) {
-      $this->add_fallback( $config );
+      $this->add_fallback( $config, $package );
       return;
     }
 
-    $client = new SmartShipClient( $api_key );
-    $costs  = CostService::costs_for( $package, $client );
+    $client  = new SmartShipClient( $api_key );
+    $lockers = LockerRepository::all( $client );
+    if ( empty( $lockers ) ) {
+      $this->add_fallback( $config, $package );
+      return;
+    }
+
+    // ponytail: one representative locker prices the whole county's EasyBox rate —
+    // per-locker repricing if SmartShip ever differentiates cost within a county.
+    $locker = LockerRepository::representative_locker( $lockers, $this->county_name( (string) ( $dest['state'] ?? '' ) ) );
+    if ( null === $locker ) {
+      $this->add_fallback( $config, $package );
+      return;
+    }
+
+    $costs = CostService::costs_for( $package, $client, (int) $locker['id'] );
     if ( null === $costs ) {
-      $this->add_fallback( $config );
+      $this->add_fallback( $config, $package );
       return;
     }
 
-    $sameday = CostService::courier_cost( $costs, 2 ); // 2 = SameDay home.
-    if ( null === $sameday ) {
-      $this->add_fallback( $config );
+    $easybox_cost = CostService::courier_cost( $costs, 12 ); // 12 = SameDay EasyBox.
+    if ( null === $easybox_cost ) {
+      $this->add_fallback( $config, $package );
       return;
     }
 
@@ -134,9 +150,18 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
     $this->add_rate( [
       'id'        => $this->get_rate_id(),
       'label'     => $config['title'],
-      'cost'      => EasyBoxPricing::price( $sameday / $divisor, $config ),
+      'cost'      => round( $easybox_cost / $divisor, 2 ),
       'meta_data' => [ 'easybox' => 1 ],
     ] );
+  }
+
+  /** WC's RO state name for a package's state code (e.g. 'TM' -> 'Timiș'), or '' if unavailable. */
+  private function county_name( string $state_code ): string {
+    if ( '' === $state_code || ! function_exists( 'WC' ) || ! WC()->countries ) {
+      return '';
+    }
+    $states = (array) WC()->countries->get_states( 'RO' );
+    return (string) ( $states[ $state_code ] ?? '' );
   }
 
   private function is_block_checkout(): bool {
@@ -148,8 +173,9 @@ final class EasyBoxMethod extends \WC_Shipping_Method {
       && has_block( 'woocommerce/checkout', wc_get_page_id( 'checkout' ) );
   }
 
-  private function add_fallback( array $config ): void {
-    $fb = EasyBoxPricing::fallback( $config );
+  private function add_fallback( array $config, array $package ): void {
+    $weight_kg = CostService::package_weight_kg( $package );
+    $fb        = EasyBoxPricing::fallback( $config, $weight_kg );
     $this->add_rate( [
       'id'        => $this->get_rate_id(),
       'label'     => $fb['label'],

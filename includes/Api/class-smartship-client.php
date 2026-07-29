@@ -118,7 +118,7 @@ final class SmartShipClient {
         $this->log_result( 'GET', $path, $result );
         return $result;
       }
-      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st, $path ), 'message' => $this->error_message( $st, $json, $path ), 'errors' => [] ];
       $this->log_result( 'GET', $path, $result );
       return $result;
     }
@@ -149,7 +149,7 @@ final class SmartShipClient {
     $json = json_decode( $body, true );
     if ( is_array( $json ) ) {
       $st = isset( $json['status'] ) ? (int) $json['status'] : 0;
-      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st ), 'message' => $this->error_message( $st, $json ), 'errors' => [] ];
+      $result = [ 'ok' => false, 'status' => $st, 'http' => $http, 'code' => $this->error_code( $st, $path ), 'message' => $this->error_message( $st, $json, $path ), 'errors' => [] ];
       $this->log_result( 'GET', $path, $result );
       return $result;
     }
@@ -223,8 +223,8 @@ final class SmartShipClient {
         'ok'      => false,
         'status'  => $app_status,
         'http'    => $http,
-        'code'    => $this->error_code( $app_status ),
-        'message' => $this->error_message( $app_status, $body ),
+        'code'    => $this->error_code( $app_status, $path ),
+        'message' => $this->error_message( $app_status, $body, $path ),
         'errors'  => ( isset( $body['erori'] ) && is_array( $body['erori'] ) ) ? $body['erori'] : [],
       ];
       $this->log_result( $method, $path, $result );
@@ -268,19 +268,43 @@ final class SmartShipClient {
     return $headers;
   }
 
-  private function error_code( int $status ): string {
-    switch ( $status ) {
-      case 999: return 'validation';
-      case 205: return 'iban_missing';
-      case 201: return 'specify_county';
-      case 202: return 'county_not_found';
-      default:  return 'api_error';
+  /**
+   * SmartShip's in-body error codes are per-endpoint, not global (confirmed against
+   * the 2026-07-29 docs refresh — see docs/reference/smartship-api.md, "What
+   * changed" + each endpoint's own error table). The same numeric code means
+   * different things on different endpoints (e.g. 205 is "AWB already cancelled"
+   * on /awb/cancel, NOT the old reverse-engineered "COD, no IBAN" reading for
+   * /awb/new — that mapping is gone). 999 (validation) is the one code that means
+   * the same thing everywhere.
+   */
+  private function error_code( int $status, string $path = '' ): string {
+    if ( 999 === $status ) {
+      return 'validation';
     }
+    if ( 0 === strpos( $path, '/geolocation/cities' ) ) {
+      if ( 201 === $status ) { return 'specify_county'; }
+      if ( 202 === $status ) { return 'county_not_found'; }
+    } elseif ( 0 === strpos( $path, '/cost' ) ) {
+      if ( 201 === $status ) { return 'invalid_iban'; }
+      if ( 612 === $status ) { return 'locker_required'; }
+    } elseif ( 0 === strpos( $path, '/awb/new' ) ) {
+      switch ( $status ) {
+        case 605: return 'insufficient_credit';
+        case 606: return 'courier_no_cod';
+        case 806: return 'locker_invalid';
+        case 6589: return 'locker_unavailable';
+        case 6590: return 'locker_no_cod';
+        case 4004: return 'byoc_pairing';
+      }
+    } elseif ( 0 === strpos( $path, '/awb/cancel' ) ) {
+      if ( 205 === $status ) { return 'already_cancelled'; }
+    }
+    return 'api_error';
   }
 
-  private function error_message( int $status, array $body ): string {
-    if ( 205 === $status ) {
-      return __( 'SmartShip requires an IBAN for cash-on-delivery. Add it in the plugin settings.', 'webbership-smartship' );
+  private function error_message( int $status, array $body, string $path = '' ): string {
+    if ( 0 === strpos( $path, '/cost' ) && 201 === $status ) {
+      return __( 'SmartShip requires a valid IBAN for cash-on-delivery. Add it in the plugin settings.', 'webbership-smartship' );
     }
     if ( ! empty( $body['message'] ) ) {
       return (string) $body['message'];
